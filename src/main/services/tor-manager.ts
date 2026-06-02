@@ -1,5 +1,5 @@
 import { app } from 'electron';
-import { join } from 'node:path';
+import { join, basename, relative } from 'node:path';
 import { existsSync, mkdirSync, readdirSync, statSync } from 'node:fs';
 import { execFile, spawn, type ChildProcess } from 'node:child_process';
 import https from 'node:https';
@@ -158,17 +158,26 @@ function downloadTor(): Promise<string> {
 
 /** Extract Tor Expert Bundle archive using native Windows tar */
 function extractTor(tarPath: string): Promise<void> {
+  const binDir = getBinDir();
   const torDir = getTorDir();
+  if (!existsSync(torDir)) mkdirSync(torDir, { recursive: true });
+
+  // CRITICAL: run tar with cwd=binDir and RELATIVE paths. An absolute Windows path
+  // like "C:\Users\...\file.tar.gz" makes GNU tar (e.g. the one Git for Windows puts
+  // on PATH ahead of System32's bsdtar) treat "C:" as a remote rsh host
+  // ("Cannot connect to C: resolve failed"), so extraction silently fails. Relative
+  // paths contain no colon and work for both GNU tar and bsdtar.
+  const archive = basename(tarPath);             // tor-expert-bundle.tar.gz
+  const dest = relative(binDir, torDir) || 'tor'; // tor
   return new Promise((resolve, reject) => {
-    // Use execFile (no shell) so paths can't be interpreted as shell syntax.
-    log.info(`Extracting Tor archive: ${tarPath} -> ${torDir}`);
-    execFile('tar', ['-zxf', tarPath, '-C', torDir], (err) => {
+    log.info(`Extracting Tor archive (cwd=${binDir}): ${archive} -> ${dest}`);
+    execFile('tar', ['-xzf', archive, '-C', dest], { cwd: binDir }, (err) => {
       if (err) {
         reject(err);
       } else {
         try {
           fs.unlinkSync(tarPath); // clean tar file
-        } catch {}
+        } catch { /* noop */ }
         resolve();
       }
     });
