@@ -14,8 +14,10 @@ import https from 'node:https';
 import { execFile } from 'node:child_process';
 import ffmpegStatic from 'ffmpeg-static';
 import { createLogger } from '../logger';
+import { getSetting, setSetting } from './settings';
 
 const log = createLogger('media-tools');
+const AUTO_UPDATE_INTERVAL_MS = 7 * 24 * 3600 * 1000; // re-check weekly at most
 
 // Latest full Windows GPL build (contains ffmpeg.exe + ffprobe.exe under bin/).
 const FFMPEG_LATEST_URL =
@@ -150,6 +152,7 @@ export async function updateMediaTools(): Promise<{ ok: boolean; source: string;
     try { fs.unlinkSync(zip); } catch { /* noop */ }
     const found = downloadedTool('ffmpeg');
     if (!found) throw new Error('ffmpeg.exe not found after extract');
+    setSetting('media_tools_last_update', String(Date.now()));
     log.info(`ffmpeg updated: ${found}`);
     return { ok: true, source: 'updated' };
   } catch (err) {
@@ -158,4 +161,19 @@ export async function updateMediaTools(): Promise<{ ok: boolean; source: string;
   } finally {
     updating = false;
   }
+}
+
+/**
+ * Best-effort background auto-update, called once at startup. Runs at most weekly,
+ * only on Windows, and only if the user hasn't opted out (media_tools_autoupdate='0').
+ * Never blocks startup or throws — the bundled complete build always works meanwhile.
+ */
+export function maybeAutoUpdateMediaTools(): void {
+  if (process.platform !== 'win32') return;
+  if (getSetting('media_tools_autoupdate') === '0') return;
+  if (downloadedTool('ffmpeg')) {
+    const last = Number(getSetting('media_tools_last_update') || '0');
+    if (last && Date.now() - last < AUTO_UPDATE_INTERVAL_MS) return; // recently updated
+  }
+  void updateMediaTools().catch(() => undefined);
 }

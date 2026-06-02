@@ -104,6 +104,11 @@ app.whenReady().then(() => {
   void startTor(); // Auto-start Tor if enabled in settings
   // Auto-update yt-dlp daily from GitHub releases (non-blocking)
   void import('./services/media-downloader').then((m) => m.scheduleYtDlpAutoUpdate()).catch(() => { /* ignore */ });
+  // Auto-update the media engine (ffmpeg) from its server in the background, weekly at
+  // most. Delayed so it never competes with startup; the bundled build works meanwhile.
+  setTimeout(() => {
+    void import('./services/media-tools').then((m) => m.maybeAutoUpdateMediaTools()).catch(() => { /* ignore */ });
+  }, 20_000);
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {

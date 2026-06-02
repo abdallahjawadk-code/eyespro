@@ -53,6 +53,34 @@ export function SocialVideoDomain() {
   const [updating, setUpdating]  = useState(false);
   const [updateMsg, setUpdateMsg] = useState('');
 
+  // Media engine (ffmpeg) — universal in-app playback + self-update from its server
+  const [mediaSource, setMediaSource] = useState<'updated' | 'bundled' | null>(null);
+  const [ffUpdating, setFfUpdating]   = useState(false);
+  const [ffMsg, setFfMsg]             = useState('');
+
+  useEffect(() => {
+    window.eyespro.video.mediaToolsStatus()
+      .then((r) => { if (r.ok && r.data) setMediaSource(r.data.source); })
+      .catch(() => undefined);
+  }, []);
+
+  async function updateMediaEngine() {
+    setFfUpdating(true); setFfMsg('');
+    try {
+      const r = await window.eyespro.video.updateMediaTools();
+      if (r.ok && r.data?.ok) {
+        setMediaSource('updated');
+        setFfMsg('✅ تم تحديث محرّك الوسائط إلى أحدث نسخة');
+      } else {
+        setFfMsg(`⚠️ تعذّر التحديث (${r.data?.error ?? 'خطأ'}) — يعمل بالنسخة المضمّنة`);
+      }
+    } catch {
+      setFfMsg('⚠️ تعذّر الاتصال بخادم التحديث — يعمل بالنسخة المضمّنة');
+    } finally {
+      setFfUpdating(false);
+    }
+  }
+
   // Download
   const [url, setUrl]         = useState('');
   const [info, setInfo]       = useState<VideoInfo | null>(null);
@@ -227,6 +255,24 @@ export function SocialVideoDomain() {
                 </Btn>
               </>
             )}
+          </div>
+
+          {/* Media engine (ffmpeg) — يشغّل كل صيغ الفيديو داخلياً بلا مشغّل خارجي */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 2px', flexWrap: 'wrap' }}>
+            <span style={{ fontSize: 12, color: 'var(--ok)' }}>🎞️ محرّك الوسائط</span>
+            {mediaSource && (
+              <span style={{ fontSize: 11, color: 'var(--t3)', fontFamily: 'monospace' }}>
+                {mediaSource === 'updated' ? 'أحدث نسخة' : 'النسخة المضمّنة (كاملة)'}
+              </span>
+            )}
+            <span style={{ fontSize: 11, color: 'var(--t3)' }}>يشغّل كل الصيغ داخل البرنامج</span>
+            <span style={{ flex: 1 }} />
+            {ffMsg && (
+              <span style={{ fontSize: 11, color: ffMsg.startsWith('✅') ? 'var(--ok)' : 'var(--warn)' }}>{ffMsg}</span>
+            )}
+            <Btn variant="ghost" style={{ fontSize: 11 }} disabled={ffUpdating} onClick={() => void updateMediaEngine()}>
+              {ffUpdating ? 'جارٍ التحديث…' : 'تحديث محرّك الوسائط'}
+            </Btn>
           </div>
 
           {/* Tab bar */}
