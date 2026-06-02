@@ -16,9 +16,66 @@ let activeControlPort = 9051;
 let torStatus: 'stopped' | 'starting' | 'ready' | 'error' = 'stopped';
 let lastBootstrapMsg = '';
 
-const TOR_VERSION = '15.0.14';
-const TOR_URL = `https://dist.torproject.org/torbrowser/${TOR_VERSION}/tor-expert-bundle-windows-x86_64-${TOR_VERSION}.tar.gz`;
+// Known-good version used as a fallback if the latest can't be resolved online.
+// Auto-update: setupTorIfNeeded() resolves the newest version from dist.torproject.org
+// at install time, so we don't break again when this exact build is removed (as 14.0.1 was).
+const FALLBACK_TOR_VERSION = '15.0.14';
 const DOWNLOAD_TIMEOUT_MS = 30_000;
+let resolvedTorVersion: string | null = null;
+
+const torBundleUrl = (v: string) =>
+  `https://dist.torproject.org/torbrowser/${v}/tor-expert-bundle-windows-x86_64-${v}.tar.gz`;
+
+/** Fetch a URL into a string with a timeout (small helper for version discovery). */
+function httpsGetText(url: string, timeoutMs = 12_000): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const req = https.get(url, (res) => {
+      if (res.statusCode !== 200) { res.resume(); reject(new Error(`HTTP ${res.statusCode}`)); return; }
+      let body = '';
+      res.setEncoding('utf8');
+      res.on('data', (c) => { body += c; });
+      res.on('end', () => resolve(body));
+    });
+    req.setTimeout(timeoutMs, () => req.destroy(new Error('timeout')));
+    req.on('error', reject);
+  });
+}
+
+/** Compare dotted versions (a > b → positive). */
+function cmpVersion(a: string, b: string): number {
+  const pa = a.split('.').map(Number), pb = b.split('.').map(Number);
+  for (let i = 0; i < Math.max(pa.length, pb.length); i++) {
+    const d = (pa[i] ?? 0) - (pb[i] ?? 0);
+    if (d !== 0) return d;
+  }
+  return 0;
+}
+
+/**
+ * Resolve the newest Tor Expert Bundle version from the dist directory listing.
+ * Falls back to FALLBACK_TOR_VERSION if the listing is unreachable or unparseable,
+ * so install never breaks just because discovery failed. Cached per process.
+ */
+async function resolveTorVersion(): Promise<string> {
+  if (resolvedTorVersion) return resolvedTorVersion;
+  try {
+    const html = await httpsGetText('https://dist.torproject.org/torbrowser/');
+    // Match 3-part versions only (all modern Tor bundles, e.g. 15.0.14). Bounded
+    // quantifiers, no optional group → ReDoS-safe. We only adopt >= the fallback anyway.
+    const versions = [...html.matchAll(/href="(\d{1,3}\.\d{1,3}\.\d{1,3})\/"/g)].map((m) => m[1]!);
+    const latest = versions.sort(cmpVersion).pop();
+    // Only adopt a discovered version that is >= our known-good fallback.
+    if (latest && cmpVersion(latest, FALLBACK_TOR_VERSION) >= 0) {
+      log.info(`Resolved latest Tor version: ${latest}`);
+      resolvedTorVersion = latest;
+      return latest;
+    }
+  } catch (err) {
+    log.warn(`Tor version discovery failed, using fallback ${FALLBACK_TOR_VERSION}`, { error: (err as Error).message });
+  }
+  resolvedTorVersion = FALLBACK_TOR_VERSION;
+  return FALLBACK_TOR_VERSION;
+}
 
 function getBinDir(): string {
   const dir = join(app.getPath('userData'), 'bin');
@@ -97,13 +154,13 @@ function testExistingTorController(port: number): Promise<boolean> {
   });
 }
 
-/** Asynchronously download Tor Expert Bundle */
-function downloadTor(): Promise<string> {
+/** Asynchronously download Tor Expert Bundle from the given URL. */
+function downloadTor(url: string): Promise<string> {
   const torDir = getTorDir();
   if (!existsSync(torDir)) mkdirSync(torDir, { recursive: true });
   const tarPath = join(getBinDir(), 'tor-expert-bundle.tar.gz');
 
-  log.info(`Downloading Tor Expert Bundle from: ${TOR_URL}`);
+  log.info(`Downloading Tor Expert Bundle from: ${url}`);
   return new Promise((resolve, reject) => {
     const file = fs.createWriteStream(tarPath);
     let settled = false;
@@ -152,7 +209,7 @@ function downloadTor(): Promise<string> {
       request.on('error', fail);
     };
 
-    fetchUrl(TOR_URL, 5);
+    fetchUrl(url, 5);
   });
 }
 
@@ -197,10 +254,11 @@ export async function setupTorIfNeeded(): Promise<boolean> {
   lastBootstrapMsg = 'جاري تنزيل ملفات نظام Tor مجاناً لتجاوز الحجب...';
 
   try {
-    const tarPath = await downloadTor();
+    const version = await resolveTorVersion();   // auto-update: newest available, else fallback
+    const tarPath = await downloadTor(torBundleUrl(version));
     lastBootstrapMsg = 'جاري فك ضغط وتثبيت ملفات Tor...';
     await extractTor(tarPath);
-    log.info('Tor installed successfully.');
+    log.info(`Tor ${version} installed successfully.`);
     return true;
   } catch (err) {
     torStatus = 'error';
