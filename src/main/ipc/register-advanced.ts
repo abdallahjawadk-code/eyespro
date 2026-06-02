@@ -447,7 +447,11 @@ export function registerAdvancedHandlers(ipcMain: IpcMain, getWin: () => Browser
   });
   ipcMain.handle('monitor:add', (_e, name: string, feedUrl: string, websiteUrl?: string, sourceType?: string, fbPageUrl?: string, extraConfigJson?: string) => {
     try {
-      const VALID_TYPES: MonitorSourceType[] = ['rss', 'facebook', 'youtube', 'google_news', 'twitter', 'instagram', 'tiktok', 'website'];
+      // Instagram & TikTok competitor monitoring was removed (unreliable scrapers).
+      if (sourceType === 'instagram' || sourceType === 'tiktok') {
+        return { ok: false, error: 'رصد المنافسين على Instagram و TikTok متوقّف حالياً' };
+      }
+      const VALID_TYPES: MonitorSourceType[] = ['rss', 'facebook', 'youtube', 'google_news', 'twitter', 'website'];
       const type: MonitorSourceType = VALID_TYPES.includes(sourceType as MonitorSourceType)
         ? (sourceType as MonitorSourceType)
         : 'rss';

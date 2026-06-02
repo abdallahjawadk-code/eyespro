@@ -18,7 +18,7 @@ const SOURCE_ICONS: Record<MonitorSourceType, string> = {
   website: '🌐',
 };
 
-const VIDEO_TYPES: MonitorSourceType[] = ['youtube', 'tiktok'];
+const VIDEO_TYPES: MonitorSourceType[] = ['youtube'];
 
 function sourceIcon(type: MonitorSourceType): string {
   return SOURCE_ICONS[type] ?? '📡';
@@ -66,10 +66,8 @@ export function MonitorDomain() {
     { value: 'rss', icon: '📡', label: 'RSS / Atom', hint: t('monitor.rssHint') },
     { value: 'facebook', icon: '🇫', label: t('monitor.sourceTypes.facebook'), hint: t('monitor.facebookHint') },
     { value: 'youtube', icon: '▶️', label: t('monitor.sourceTypes.youtube'), hint: t('monitor.youtubeHint') },
-    { value: 'tiktok', icon: '🎵', label: t('monitor.sourceTypes.tiktok'), hint: t('monitor.tiktokHint') },
     { value: 'google_news', icon: '📰', label: 'Google News', hint: t('monitor.googleNewsHint') },
     { value: 'twitter', icon: '𝕏', label: t('monitor.sourceTypes.twitter'), hint: t('monitor.twitterHint') },
-    { value: 'instagram', icon: '📸', label: t('monitor.sourceTypes.instagram'), hint: t('monitor.instagramHint') },
     { value: 'website', icon: '🌐', label: t('monitor.sourceTypes.website'), hint: t('monitor.websiteHint') },
   ];
   const [monitors, setMonitors] = useState<CompetitorMonitor[]>([]);

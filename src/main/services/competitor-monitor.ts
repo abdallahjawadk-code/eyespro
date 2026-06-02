@@ -14,8 +14,6 @@ import { scrapeFacebookPage } from './facebook-scraper';
 import { scrapeYoutubeChannel, youtubeVideoToPost } from './scrapers/youtube-scraper';
 import { scrapeGoogleNews } from './scrapers/google-news-scraper';
 import { scrapeTwitterProfile } from './scrapers/twitter-scraper';
-import { scrapeInstagramProfile } from './scrapers/instagram-scraper';
-import { scrapeTikTokProfile } from './scrapers/tiktok-scraper';
 import { checkWebsiteChangeWithDiff } from './website-change-detector';
 import { withRetry } from '../net/stealth-utils';
 import { createLogger } from '../logger';
@@ -343,81 +341,8 @@ async function checkTwitterMonitor(monitor: CompetitorMonitor): Promise<{ found:
   return { found };
 }
 
-// ─── Instagram check ──────────────────────────────────────────────────────────
-
-async function checkInstagramMonitor(monitor: CompetitorMonitor): Promise<{ found: number }> {
-  const db = getDb();
-  const cfg = parseExtraConfig(monitor);
-  const username = cfg.handle || monitor.feed_url;
-  if (!username) throw new Error('Instagram: username is required');
-
-  const posts = await scrapeInstagramProfile(username);
-  if (!posts.length) return { found: 0 };
-
-  const insert = db.prepare(
-    `INSERT OR IGNORE INTO competitor_snapshots
-       (monitor_id, title, link, summary, published_at, seen_at, is_read)
-     VALUES (?, ?, ?, ?, ?, datetime('now'), 0)`
-  );
-
-  let found = 0;
-  const tx = db.transaction(() => {
-    for (const p of posts) {
-      const title = p.text.split('\n')[0].slice(0, 120) || 'منشور إنستغرام';
-      const existing = db.prepare(
-        `SELECT id FROM competitor_snapshots WHERE monitor_id = ? AND (link = ? OR summary = ?)`
-      ).get(monitor.id, p.link ?? '', p.text.slice(0, 100));
-      if (existing) continue;
-      insert.run(monitor.id, title, p.link ?? null, p.text.slice(0, 1000), p.timestamp ?? null);
-      found++;
-    }
-  });
-  tx();
-
-  db.prepare(`UPDATE competitor_monitors SET last_checked_at = datetime('now') WHERE id = ?`).run(monitor.id);
-  return { found };
-}
-
-// ─── TikTok check ────────────────────────────────────────────────────────────
-
-async function checkTikTokMonitor(monitor: CompetitorMonitor): Promise<{ found: number }> {
-  const db = getDb();
-  const cfg = parseExtraConfig(monitor);
-  const handle = cfg.handle || monitor.feed_url;
-  if (!handle) throw new Error('TikTok: handle is required');
-
-  const videos = await scrapeTikTokProfile(handle);
-  if (!videos.length) return { found: 0 };
-
-  const insert = db.prepare(
-    `INSERT OR IGNORE INTO competitor_snapshots
-       (monitor_id, title, link, summary, published_at, thumbnail_url, seen_at, is_read)
-     VALUES (?, ?, ?, ?, ?, ?, datetime('now'), 0)`
-  );
-
-  let found = 0;
-  const tx = db.transaction(() => {
-    for (const v of videos) {
-      const title = v.text.split('\n')[0].slice(0, 120) || 'فيديو تيك توك';
-      const key = v.videoId || v.text.slice(0, 80);
-      const existing = db.prepare(
-        `SELECT id FROM competitor_snapshots WHERE monitor_id = ? AND (link = ? OR summary = ?)`
-      ).get(monitor.id, v.link ?? '', key);
-      if (existing) continue;
-      const summary = [
-        v.text.slice(0, 800),
-        v.likes ? `❤️ ${Number(v.likes).toLocaleString('ar')}` : '',
-        v.views ? `👁 ${Number(v.views).toLocaleString('ar')}` : '',
-      ].filter(Boolean).join(' · ');
-      insert.run(monitor.id, title, v.link ?? null, summary, v.publishedAt ?? null, v.thumbnail ?? null);
-      found++;
-    }
-  });
-  tx();
-
-  db.prepare(`UPDATE competitor_monitors SET last_checked_at = datetime('now') WHERE id = ?`).run(monitor.id);
-  return { found };
-}
+// Instagram & TikTok competitor monitoring was removed — their scrapers were
+// unreliable. Existing rows of those types are skipped gracefully in checkMonitor.
 
 // ─── Website change check ─────────────────────────────────────────────────────
 
@@ -465,8 +390,10 @@ export async function checkMonitor(id: number): Promise<{ found: number }> {
     case 'youtube':     return checkYoutubeMonitor(monitor);
     case 'google_news': return checkGoogleNewsMonitor(monitor);
     case 'twitter':     return checkTwitterMonitor(monitor);
-    case 'instagram':   return checkInstagramMonitor(monitor);
-    case 'tiktok':      return checkTikTokMonitor(monitor);
+    case 'instagram':
+    case 'tiktok':
+      // Removed — scrapers were unreliable. Skip existing rows without erroring the run.
+      return { found: 0 };
     case 'website':     return checkWebsiteMonitor(monitor);
     default:            return checkRssMonitor(monitor);
   }
