@@ -1247,4 +1247,32 @@ export function runMigrations(db: Database.Database): void {
     ensureCol(db, 'keyword_alerts', 'enabled', 'INTEGER NOT NULL DEFAULT 1');
     ensureCol(db, 'keyword_alerts', 'tenant_id', 'INTEGER');
   });
+
+  // v51 — role_permissions schema fix. The table was created with a single `resource`
+  // column (seeded as 'publish:<platform>'), but permissions.ts and the UI use separate
+  // `platform` + `action` columns with ON CONFLICT(role,platform,action) — so list/set/
+  // hasPermission all threw "no such column: platform". The resource rows were dead (the
+  // RBAC guard uses a separate hardcoded table). Rebuild to the platform+action model the
+  // service uses and re-seed the defaults in that shape.
+  migrateTo(db, 51, () => {
+    db.exec(`DROP TABLE IF EXISTS role_permissions;`);
+    db.exec(`
+      CREATE TABLE role_permissions (
+        id       INTEGER PRIMARY KEY AUTOINCREMENT,
+        role     TEXT NOT NULL,
+        platform TEXT NOT NULL,
+        action   TEXT NOT NULL,
+        allowed  INTEGER NOT NULL DEFAULT 1,
+        UNIQUE(role, platform, action)
+      );
+    `);
+    const roles = ['super_admin', 'editor', 'reporter', 'viewer'];
+    const platforms = ['telegram', 'twitter', 'facebook', 'wordpress', 'discord', 'instagram', 'linkedin', 'whatsapp', 'email'];
+    const ins = db.prepare(`INSERT OR IGNORE INTO role_permissions (role, platform, action, allowed) VALUES (?, ?, 'publish', ?)`);
+    for (const role of roles) {
+      for (const platform of platforms) {
+        ins.run(role, platform, (role === 'super_admin' || role === 'editor') ? 1 : 0);
+      }
+    }
+  });
 }
