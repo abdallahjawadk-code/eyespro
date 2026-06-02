@@ -31,7 +31,12 @@ function assertBuildExists(): void {
   }
 }
 
-export async function launchApp(): Promise<AppFixture> {
+export interface LaunchOptions {
+  /** Set EYESPRO_BYPASS_LICENSE=1 so the app skips the license/activation gate. */
+  bypassLicense?: boolean;
+}
+
+export async function launchApp(opts: LaunchOptions = {}): Promise<AppFixture> {
   assertBuildExists();
 
   const app = await electron.launch({
@@ -40,6 +45,7 @@ export async function launchApp(): Promise<AppFixture> {
       ...process.env,
       NODE_ENV: 'test',
       EYESPRO_TEST_MODE: '1',
+      ...(opts.bypassLicense ? { EYESPRO_BYPASS_LICENSE: '1' } : {}),
     },
     timeout: 15_000,
   });
