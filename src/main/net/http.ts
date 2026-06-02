@@ -7,6 +7,14 @@ import type { Readable } from 'node:stream';
 import { defaultFetchHeaders, getPoliteUserAgent } from './polite-http';
 import { getSetting } from '../services/settings';
 import { isTorActive, getTorSocksPort } from '../services/tor-manager';
+import { CircuitBreaker, withRetry } from './resilience';
+import { createLogger } from '../logger';
+
+const httpLog = createLogger('net-http');
+
+// Resilience for idempotent reads only. Keyed by host so one dead site doesn't
+// stall others. POST/DELETE (publishing) never touch this — see request().
+const fetchBreaker = new CircuitBreaker({ failureThreshold: 5, cooldownMs: 30_000 });
 
 // ─── SOCKS5 Tunneling for Tor ───────────────────────────────────────────────
 
@@ -227,11 +235,16 @@ export interface HttpRequestOptions {
    * leave off for AI/publishing so their tokens stay on a direct connection.
    */
   useProxy?: boolean;
+  /**
+   * Retry attempts for idempotent reads (GET/HEAD) on network error / 5xx / 429.
+   * Default 2. Ignored for POST/DELETE (never retried, to avoid double-publishing).
+   */
+  retries?: number;
 }
 
 const DEFAULT_MAX_BYTES = Number(process.env.EYESPRO_MAX_FETCH_BYTES || '') || 6_291_456; // 6 MB
 
-function request(
+function rawRequest(
   url: string,
   method: 'GET' | 'HEAD' | 'POST' | 'DELETE',
   body?: string,
@@ -333,7 +346,9 @@ function request(
             }
             const redirectMethod = status === 303 ? 'GET' : method;
             const redirectBody = status === 303 ? undefined : body;
-            request(redirectUrl, redirectMethod as 'GET' | 'HEAD' | 'POST' | 'DELETE', redirectBody, headers, {
+            // Follow the hop with rawRequest — the outer resilient request() wraps the
+            // whole chain, so we must not stack retries per redirect hop.
+            rawRequest(redirectUrl, redirectMethod as 'GET' | 'HEAD' | 'POST' | 'DELETE', redirectBody, headers, {
               ...opts,
               redirectsLeft: redirectsLeft - 1
             })
@@ -385,6 +400,55 @@ function request(
     if (body) req.write(body);
     req.end();
   });
+}
+
+function hostOf(url: string): string {
+  try { return new URL(url).host; } catch { return url; }
+}
+
+/**
+ * Resilient entry point. Idempotent reads (GET/HEAD) get a per-host circuit breaker
+ * + bounded retries on transient failures (network error / 5xx / 429). Non-idempotent
+ * methods (POST/DELETE — i.e. publishing) are passed straight through to rawRequest:
+ * never retried, never blocked by a breaker.
+ */
+function request(
+  url: string,
+  method: 'GET' | 'HEAD' | 'POST' | 'DELETE',
+  body?: string,
+  headers: Record<string, string> = {},
+  opts: HttpRequestOptions = {}
+): Promise<HttpResult> {
+  if (method !== 'GET' && method !== 'HEAD') {
+    return rawRequest(url, method, body, headers, opts);
+  }
+
+  const host = hostOf(url);
+  if (!fetchBreaker.canRequest(host)) {
+    httpLog.warn('circuit open, skipping request', { host });
+    return Promise.resolve({ ok: false, status: 0, body: `circuit-open:${host}`, finalUrl: url });
+  }
+
+  const retries = Math.max(0, opts.retries ?? 2);
+  return withRetry(() => rawRequest(url, method, body, headers, opts), {
+    retries,
+    shouldRetry: (res, err) => {
+      if (err) return true;                              // network error / timeout
+      if (!res) return false;
+      return res.status === 429 || (res.status >= 500 && res.status < 600);
+    },
+    onRetry: (attempt) => httpLog.debug('retrying request', { host, attempt }),
+  }).then(
+    (res) => {
+      if (res.status === 0 || res.status >= 500) fetchBreaker.recordFailure(host);
+      else fetchBreaker.recordSuccess(host);
+      return res;
+    },
+    (err) => {
+      fetchBreaker.recordFailure(host);
+      throw err;
+    }
+  );
 }
 
 export function getText(
