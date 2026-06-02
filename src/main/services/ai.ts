@@ -1,6 +1,7 @@
 import { getDb } from '../db/database';
 import { getText, postJson } from '../net/http';
 import { getSetting } from './settings';
+import { runProviderChain } from './ai-fallback';
 import { getArticle, snapshotOriginalBeforeRewrite, snapshotOriginalContentIfEmpty, updateArticle } from './articles';
 import {
   getManagedOllamaBaseUrl,
@@ -445,11 +446,41 @@ export async function runAiRaw(prompt: string, input: string, provider: string, 
   throw new Error(`Unknown AI provider: ${p}`);
 }
 
-/* ── runAiPrompt: single prompt call for general utilities ───────────────── */
+/**
+ * Ordered provider fallback chain: the effective primary first, then every other
+ * provider that has credentials configured (Ollama last as the free local fallback).
+ * Lets the newsroom keep working when the primary provider is down/rate-limited.
+ */
+export function resolveAiProviderChain(): { provider: string; model: string }[] {
+  const primary = resolveEffectiveAiProvider();
+  if (primary === 'unconfigured') return [];
+  const chain: string[] = [];
+  const add = (p: string, ok: boolean) => { if (ok && !chain.includes(p)) chain.push(p); };
+  add(primary, true);
+  add('gemini', !!getSetting('gemini_api_key')?.trim());
+  add('openai', !!getSetting('openai_api_key')?.trim());
+  add('groq', !!getSetting('groq_api_key')?.trim());
+  add('anthropic', !!getSetting('anthropic_api_key')?.trim());
+  add('ollama', isBuiltinOllamaEnabled() || allowLocalOllama());
+  return chain.map((p) => ({ provider: p, model: resolveModelForProvider(p) }));
+}
+
+/**
+ * Run a prompt across the provider chain: a healthy primary incurs zero overhead;
+ * on failure it falls through to the next configured provider. (Chain iteration
+ * lives in ai-fallback.ts so it can be unit-tested without DB/electron.)
+ */
+export async function runAiChain(prompt: string, input: string): Promise<string> {
+  return runProviderChain(
+    resolveAiProviderChain(),
+    (provider, model) => runAiRaw(prompt, input, provider, model),
+    () => new Error(formatAiErrorMessage('AI unconfigured')),
+  );
+}
+
+/* ── runAiPrompt: single prompt call for general utilities (with provider fallback) ── */
 export async function runAiPrompt(prompt: string): Promise<string> {
-  const provider = resolveEffectiveAiProvider();
-  const model = resolveModelForProvider(provider);
-  return runAiRaw(prompt, '', provider, model);
+  return runAiChain(prompt, '');
 }
 
 /* ── runAi ────────────────────────────────────────────────────────────────── */
@@ -463,13 +494,11 @@ export async function runAi(
 
   const input = `${article.title}\n\n${article.content || article.summary || ''}`;
   const prompt = PROMPTS[mode] ?? PROMPTS.summarize;
-  const provider = resolveEffectiveAiProvider();
-  const model = resolveModelForProvider(provider);
 
   let lastErr = '';
   for (let attempt = 0; attempt <= retries; attempt++) {
     try {
-      const result = await runAiRaw(prompt, input, provider, model);
+      const result = await runAiChain(prompt, input);
 
       if (mode === 'summarize') {
         updateArticle(articleId, { summary: result });
