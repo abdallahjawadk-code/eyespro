@@ -3,11 +3,10 @@ import { useTranslation } from 'react-i18next';
 import { useLocation } from 'react-router-dom';
 import { AiProvidersPanel } from '../components/AiProvidersPanel';
 import { OllamaEmbeddedPanel } from '../components/OllamaEmbeddedPanel';
-import { SocialPlatformsPanel } from '../components/SocialPlatformsPanel';
 import { useAiSettings } from '../hooks/useAiSettings';
 import { Btn, Card, Field, Input, Msg, Panel } from '../../../ui';
 
-type SettingsTab = 'general' | 'ai' | 'social' | 'privacy' | 'about';
+type SettingsTab = 'general' | 'ai' | 'privacy' | 'about';
 
 type TorStatus = {
   enabled?: boolean;
@@ -52,7 +51,7 @@ export function SettingsScreen() {
 
   useEffect(() => {
     const st = (location.state as { tab?: string } | null)?.tab;
-    if (st === 'ai' || st === 'social' || st === 'general' || st === 'privacy' || st === 'about') setTab(st as SettingsTab);
+    if (st === 'ai' || st === 'general' || st === 'privacy' || st === 'about') setTab(st as SettingsTab);
   }, [location.state]);
 
   async function save(key: string, value: string) {
@@ -66,7 +65,6 @@ export function SettingsScreen() {
     { id: 'general', label: t('settings.general'), icon: '⚙️' },
     { id: 'privacy', label: 'الخصوصية والأمان', icon: '🛡️' },
     { id: 'ai', label: t('settings.groupAi'), icon: '🤖' },
-    { id: 'social', label: t('settings.groupSocial'), icon: '📱' },
     { id: 'about', label: t('settings.about'), icon: 'ℹ️' },
   ];
 
@@ -262,7 +260,6 @@ export function SettingsScreen() {
               </div>
             </Card>
           )}
-          {tab === 'social' && <SocialPlatformsPanel />}
           {tab === 'about' && (
             <Card title={t('settings.about')}>
               <p style={{ margin: 0, fontSize: 14, lineHeight: 1.6, color: 'var(--t2)' }}>
