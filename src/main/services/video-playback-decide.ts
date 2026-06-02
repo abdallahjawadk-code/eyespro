@@ -28,12 +28,15 @@ export interface PlaybackPlan {
 
 const norm = (s?: string) => (s ?? '').toLowerCase().trim();
 
-const NATIVE_VCODECS = new Set(['h264', 'avc1', 'vp8', 'vp9', 'av1', 'theora']);
+// Conservative: only codecs Electron's bundled Chromium reliably decodes. AV1 and
+// Theora are intentionally excluded — many Electron builds lack the AV1 decoder, so
+// AV1 files (common from social downloads) must be transcoded to play reliably.
+const NATIVE_VCODECS = new Set(['h264', 'avc1', 'vp8', 'vp9']);
 const NATIVE_ACODECS = new Set(['aac', 'mp3', 'opus', 'vorbis', 'flac', 'pcm_s16le', 'pcm_s24le']);
 const NATIVE_VIDEO_EXT = new Set(['mp4', 'm4v', 'webm', 'ogv', 'ogg']);
 const NATIVE_AUDIO_EXT = new Set(['mp3', 'm4a', 'aac', 'wav', 'flac', 'opus', 'oga', 'ogg']);
-/** Video codecs the browser can decode AND that fit cleanly in an MP4 (fast remux). */
-const REMUX_MP4_VCODECS = new Set(['h264', 'avc1', 'av1']);
+/** Video codecs the browser reliably decodes AND that fit cleanly in an MP4 (fast remux). */
+const REMUX_MP4_VCODECS = new Set(['h264', 'avc1']);
 /** Audio codecs valid to copy into an MP4 without re-encoding. */
 const MP4_AUDIO_COPY_OK = new Set(['aac', 'mp3', 'ac3', 'eac3']);
 

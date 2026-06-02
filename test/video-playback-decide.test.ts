@@ -51,6 +51,12 @@ describe('decidePlayback', () => {
     expect(plan.ffmpegArgs.join(' ')).toContain('-c:a aac'); // opus not mp4-copy-safe
   });
 
+  it('transcode AV1 → h264/aac (Electron Chromium may lack the AV1 decoder)', () => {
+    const plan = decidePlayback('clip.mp4', { hasVideo: true, videoCodec: 'av1', audioCodec: 'aac' });
+    expect(plan.mode).toBe('transcode');
+    expect(plan.ffmpegArgs.join(' ')).toContain('libx264');
+  });
+
   it('transcode HEVC → h264/aac mp4 (browser cannot decode hevc)', () => {
     const plan = decidePlayback('uhd.mp4', { hasVideo: true, videoCodec: 'hevc', audioCodec: 'aac' });
     expect(plan.mode).toBe('transcode');

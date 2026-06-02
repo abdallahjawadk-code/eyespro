@@ -350,12 +350,12 @@ export function VideoPlayer({ src, title, filePath, onClose }: VideoPlayerProps)
       {error && (
         <div style={{ marginTop: 8, padding: '10px 14px', borderRadius: 8, background: 'rgba(248,113,113,0.12)', border: '1px solid rgba(248,113,113,0.3)', display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
           <span style={{ color: '#f87171', fontSize: 12, flex: 1 }}>⚠️ {error}</span>
-          {filePath && (
+          {filePath && !preparing && (
             <button
-              onClick={() => void window.eyespro.downloader.openFile(filePath)}
+              onClick={() => { preparedRef.current = false; void prepareInApp(); }}
               style={{ ...btnStyle, background: 'rgba(248,113,113,0.2)', border: '1px solid rgba(248,113,113,0.4)', color: '#fca5a5', padding: '4px 12px', borderRadius: 6 }}
             >
-              📂 فتح بمشغّل النظام
+              🔄 إعادة المحاولة
             </button>
           )}
         </div>
