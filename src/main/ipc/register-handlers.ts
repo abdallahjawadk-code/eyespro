@@ -358,11 +358,9 @@ export function registerIpcHandlers(ipcMain: IpcMain, getWin: () => BrowserWindo
   ) => {
     try {
       const { getArticle } = await import('../services/articles');
-      const { runAiRaw, resolveEffectiveAiProvider, resolveModelForProvider } = await import('../services/ai');
+      const { runAiChain } = await import('../services/ai');
       const art = getArticle(sanitizeInt(articleId, 1));
       if (!art) return { ok: false, error: 'Article not found' };
-      const provider = resolveEffectiveAiProvider();
-      const model    = resolveModelForProvider(provider);
       const ctx = [
         'أنت مساعد ذكاء اصطناعي متخصص في تحليل ومناقشة المقالات الإخبارية.',
         'أجب دائماً بشكل مفصل ومحترف.',
@@ -384,7 +382,7 @@ export function registerIpcHandlers(ipcMain: IpcMain, getWin: () => BrowserWindo
         prev ? `\n=== سجل المحادثة ===\n${prev}` : '',
         `\n=== سؤال المستخدم ===\n${String(question).slice(0, 600)}`,
       ].join('');
-      const response = await runAiRaw(prompt, '', provider, model);
+      const response = await runAiChain(prompt, '');
       return ok({ response });
     } catch (err) {
       const { formatAiErrorMessage } = await import('../services/ai');

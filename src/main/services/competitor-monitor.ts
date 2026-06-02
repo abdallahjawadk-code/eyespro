@@ -9,8 +9,7 @@
 import { getDb } from '../db/database';
 import { getText } from '../net/http';
 import { createArticle } from './articles';
-import { runAiRaw } from './ai';
-import { getSetting } from './settings';
+import { runAiChain } from './ai';
 import { scrapeFacebookPage } from './facebook-scraper';
 import { scrapeYoutubeChannel, youtubeVideoToPost } from './scrapers/youtube-scraper';
 import { scrapeGoogleNews } from './scrapers/google-news-scraper';
@@ -532,13 +531,10 @@ export async function rewriteSnapshot(snapshotId: number): Promise<{ articleId: 
     ingest_status: 'from_competitor',
   });
 
-  const provider = getSetting('ai_provider') || 'gemini';
-  const model = getSetting(`${provider}_default_model`) || '';
-
   const prompt = `أعد كتابة الخبر التالي بأسلوب صحفي احترافي باللغة العربية، مع الحفاظ على المعلومات الأساسية:\n\nالعنوان: ${snapshot.title}\n\nالمحتوى: ${snapshot.summary ?? ''}`;
 
   try {
-    const rewritten = await runAiRaw(prompt, '', provider, model);
+    const rewritten = await runAiChain(prompt, '');
     db.prepare(`UPDATE articles SET content = ?, status = 'draft' WHERE id = ?`).run(rewritten.trim(), articleId);
   } catch (e) {
     log.warn(`AI rewrite failed for snapshot ${snapshotId}: ${(e as Error).message}`);

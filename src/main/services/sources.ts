@@ -723,10 +723,8 @@ async function extractFullContentWithAi(
   "content": "المحتوى النصي الكامل للمقال هنا"
 }`;
 
-    const { runAiRaw, resolveEffectiveAiProvider, resolveModelForProvider } = await import('./ai');
-    const provider = resolveEffectiveAiProvider();
-    const model = resolveModelForProvider(provider);
-    const response = await runAiRaw(prompt, cleanedHtml, provider, model);
+    const { runAiChain } = await import('./ai');
+    const response = await runAiChain(prompt, cleanedHtml);
 
     const cleanedJson = response.replace(/```json|```/g, '').trim();
     const result = JSON.parse(cleanedJson) as { title?: string; description?: string; content?: string };

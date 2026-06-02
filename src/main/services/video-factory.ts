@@ -11,7 +11,7 @@ import { randomBytes } from 'node:crypto';
 import { app } from 'electron';
 import ffmpegStatic from 'ffmpeg-static';
 import { getDb } from '../db/database';
-import { runAiRaw } from './ai';
+import { runAiChain } from './ai';
 import { getArticle } from './articles';
 import { getSetting } from './settings';
 import { createLogger } from '../logger';
@@ -63,12 +63,9 @@ export async function generateVideoScript(articleId: number): Promise<{ script: 
   const content = (article.content || '').slice(0, 500);
   const prompt = `اكتب نصاً إخبارياً لفيديو قصير (30-60 ثانية) للمقال التالي:\nالعنوان: ${article.title}\nالمحتوى: ${content}\n\nالمطلوب: 5 جمل قصيرة ومؤثرة، كل جملة في سطر منفصل، مناسبة للنطق بالصوت.`;
 
-  const provider = getSetting('ai_provider') || 'gemini';
-  const model = getSetting(`${provider}_default_model`) || '';
-
   let script: string;
   try {
-    script = await runAiRaw(prompt, '', provider, model);
+    script = await runAiChain(prompt, '');
   } catch (e) {
     throw new Error(`AI script generation failed: ${(e as Error).message}`);
   }

@@ -432,7 +432,7 @@ export async function generateCoverage(trendId: number, userId?: number): Promis
     return { ok: false, error: 'تم تجاهل هذا التريند.' };
   }
 
-  const { checkAiProviderReady, runAiRaw, resolveEffectiveAiProvider, resolveModelForProvider } = await import('./ai');
+  const { checkAiProviderReady, runAiChain } = await import('./ai');
   const health = await checkAiProviderReady();
   if (!health.ok) {
     return { ok: false, error: health.error ?? 'مزود الذكاء الاصطناعي غير جاهز.' };
@@ -473,9 +473,9 @@ ${isGlobal ? 'تنبيه: هذا تريند عالمي، يرجى تعريبه �
   "content": "محتوى المقال بالكامل مقسماً لفقرات"
 }`;
 
-    const provider = resolveEffectiveAiProvider();
-    const model = resolveModelForProvider(provider);
-    const response = await runAiRaw(prompt, trend.description ?? '', provider, model);
+    // Route through the provider fallback chain so autopilot keeps generating even
+    // if the primary AI provider is down/rate-limited.
+    const response = await runAiChain(prompt, trend.description ?? '');
 
     // Robust JSON extraction — handle markdown fences, leading text, trailing text
     let result: { title?: string; summary?: string; content?: string } | null = null;
