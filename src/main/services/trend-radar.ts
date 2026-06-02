@@ -188,7 +188,7 @@ export function detectAndMarkGlobalTrends(): void {
   }
   
   if (globalTrends.length > 0) {
-    console.log(`[TrendRadar] Marked ${globalTrends.length} trends as global: ${globalTrends.map(t => t.title.slice(0, 30)).join(', ')}`);
+    console.warn(`[TrendRadar] Marked ${globalTrends.length} trends as global: ${globalTrends.map(t => t.title.slice(0, 30)).join(', ')}`);
   }
 }
 

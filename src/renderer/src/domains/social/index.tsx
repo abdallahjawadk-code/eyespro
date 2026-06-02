@@ -8,9 +8,10 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import './social.css';
 import { PLATFORM_ICON_MAP } from './PlatformIcons';
+import type { EyesProApi } from '../../../../shared/api-types';
 
 const openShare = (url: string, clipboardText?: string) =>
-  (window as unknown as { eyespro: import('../../../../shared/api-types').EyesProApi })
+  (window as unknown as { eyespro: EyesProApi })
     .eyespro.social.openShare(url, clipboardText);
 
 // Helper to extract domain from URL

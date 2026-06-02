@@ -192,7 +192,7 @@ export function detectVirtualMachine(): VMCheckResult {
       score += 10;
     }
 
-  } catch (error) {
+  } catch {
     // Error during detection might indicate sandbox
     indicators.push('Detection error (suspicious)');
     score += 5;
@@ -253,7 +253,7 @@ export function verifyRuntimeIntegrity(): { valid: boolean; checks: IntegrityChe
         actualHash: hash,
         valid: true, // Would be: hash === expectedHash
       });
-    } catch (error) {
+    } catch {
       checks.push({
         file,
         expectedHash: 'unknown',
@@ -363,7 +363,7 @@ export function detectDebugger(): boolean {
 
 export function triggerProtection(): void {
   if (detectDebugger()) {
-    console.log('Debugger detected - triggering protection');
+    console.warn('Debugger detected - triggering protection');
     // Option 1: Exit gracefully
     // app.quit();
     

@@ -60,6 +60,8 @@ export function LinksScreen() {
       setError(t('linkScan.failed'));
     }
     setCheckingHealth(false);
+    // loadLog is a stable useCallback([]) — safe to omit from deps.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [url, t]);
 
   const riskTone = (risk?: string) => {

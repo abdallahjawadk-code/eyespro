@@ -1,7 +1,7 @@
 import { app } from 'electron';
 import { join } from 'node:path';
 import { existsSync, mkdirSync, readdirSync, statSync } from 'node:fs';
-import { exec, spawn, ChildProcess } from 'node:child_process';
+import { execFile, spawn, type ChildProcess } from 'node:child_process';
 import https from 'node:https';
 import fs from 'node:fs';
 import net from 'node:net';
@@ -145,9 +145,9 @@ function downloadTor(): Promise<string> {
 function extractTor(tarPath: string): Promise<void> {
   const torDir = getTorDir();
   return new Promise((resolve, reject) => {
-    const cmd = `tar -zxf "${tarPath}" -C "${torDir}"`;
-    log.info(`Extracting Tor archive: ${cmd}`);
-    exec(cmd, (err) => {
+    // Use execFile (no shell) so paths can't be interpreted as shell syntax.
+    log.info(`Extracting Tor archive: ${tarPath} -> ${torDir}`);
+    execFile('tar', ['-zxf', tarPath, '-C', torDir], (err) => {
       if (err) {
         reject(err);
       } else {

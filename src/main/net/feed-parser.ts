@@ -565,7 +565,7 @@ export function parseTelegram(html: string, sourceName: string): FeedItem[] {
   }
 
   if (DEBUG && items.length > 0) {
-    console.log(`[FeedParser:Telegram] Parsed ${items.length} items using strategy ${strategyUsed}`);
+    console.warn(`[FeedParser:Telegram] Parsed ${items.length} items using strategy ${strategyUsed}`);
   }
 
   return items;

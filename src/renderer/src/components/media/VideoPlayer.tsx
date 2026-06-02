@@ -47,6 +47,9 @@ export function VideoPlayer({ src, title, filePath, onClose }: VideoPlayerProps)
     if (duration > 0 && trimEnd === 0) {
       setTrimEnd(Number(duration.toFixed(1)));
     }
+    // Intentional one-time init when duration first loads; the `trimEnd === 0`
+    // guard makes it idempotent. Adding trimEnd to deps would re-run on user edits.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [duration]);
 
   useEffect(() => {

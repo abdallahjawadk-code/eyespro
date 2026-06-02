@@ -50,7 +50,7 @@ export async function crawlWebsite(
   let host = '';
   try {
     host = new URL(startUrl).hostname.toLowerCase();
-  } catch (err) {
+  } catch {
     return { monitorId, pagesCrawled: 0, snapshotsCreated: 0, error: 'رابط البدء غير صالح' };
   }
 

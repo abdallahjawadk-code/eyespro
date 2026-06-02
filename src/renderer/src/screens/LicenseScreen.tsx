@@ -40,6 +40,9 @@ export function LicenseScreen({ onActivated, trialExpired = false }: Props) {
     if (countdown === null || countdown <= 0) return;
     const t = setInterval(() => setCountdown(c => c !== null ? Math.max(0, c - 1000) : null), 1000);
     return () => clearInterval(t);
+    // Depend only on null-ness: the interval uses a functional updater, so it must
+    // recreate when countdown goes null↔non-null, not on every tick.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [countdown !== null]);
 
   async function activate() {

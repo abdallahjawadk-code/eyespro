@@ -63,6 +63,9 @@ function TrialCountdown({ lang }: { lang: string }) {
     if (ms === null) return;
     const id = setInterval(() => setMs(v => (v === null ? null : Math.max(0, v - 1000))), 1000);
     return () => clearInterval(id);
+    // Depend only on null-ness: the interval uses a functional updater, so it must
+    // recreate when ms goes null↔non-null, not on every tick.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ms === null]);
 
   if (licensed) {

@@ -110,7 +110,7 @@ function detectClockTampering(firstRunAt: string): boolean {
   
   // Future date detection
   if (now < firstRun) {
-    console.log('[TrialManager] Clock tampering detected: System time is before first run');
+    console.warn('[TrialManager] Clock tampering detected: System time is before first run');
     return true;
   }
   
@@ -158,7 +158,7 @@ export function initializeTrial(): TrialStatus {
       INSERT OR REPLACE INTO settings (key, value) 
       VALUES ('trial_data_backup', ?)
     `).run(encrypted);
-  } catch (e) {
+  } catch {
     // DB might not have settings table yet
   }
   

@@ -39,6 +39,7 @@ import { isPlaywrightAvailable } from '../net/browser-fetch';
 import { getSetting, setSetting } from '../services/settings';
 import { getTorStatus, rotateTorIp, startTor, stopTor } from '../services/tor-manager';
 import { crawlWebsite, type CrawlOptions } from '../services/deep-crawler';
+import type { DownloadQuality } from '../services/media-downloader';
 import { vaultAvailable } from '../security/secrets-vault';
 import { generateReport, generateReportHtml } from '../services/report-generator';
 import type { ApiResult } from '../../shared/api-types';
@@ -437,7 +438,7 @@ export function registerAdvancedHandlers(ipcMain: IpcMain, getWin: () => Browser
         : 'rss';
       let extraConfig: ExtraConfig | undefined;
       if (extraConfigJson) {
-        try { extraConfig = JSON.parse(String(extraConfigJson)) as import('../services/competitor-monitor').ExtraConfig; }
+        try { extraConfig = JSON.parse(String(extraConfigJson)) as ExtraConfig; }
         catch { /* ignore malformed */ }
       }
       return ok(addMonitor(
@@ -586,7 +587,7 @@ export function registerAdvancedHandlers(ipcMain: IpcMain, getWin: () => Browser
         win?.webContents.send('downloader:progress', job);
       });
       // Start download in background — don't await
-      void mod.downloadMedia(String(url), (quality || 'best') as import('../services/media-downloader').DownloadQuality, String(jobId));
+      void mod.downloadMedia(String(url), (quality || 'best') as DownloadQuality, String(jobId));
       return ok({ jobId });
     } catch (e) { return { ok: false, error: (e as Error).message }; }
   });
