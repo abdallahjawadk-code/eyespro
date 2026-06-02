@@ -284,6 +284,13 @@ const api: EyesProApi = {
     importPath: (path) => invoke('video:importPath', path),
     probe: (filePath: string) => invoke('video:probe', filePath),
     specs: () => invoke('video:specs'),
+    prepareForPlayback: (filePath: string) => invoke('video:prepareForPlayback', filePath),
+    mediaToolsStatus: () => invoke('video:mediaToolsStatus'),
+    updateMediaTools: () => invoke('video:updateMediaTools'),
+    onPrepareProgress: (cb: (data: { pct: number; mode: string }) => void) => {
+      ipcRenderer.on('video:prepareProgress', (_e, data) => cb(data));
+      return () => ipcRenderer.removeAllListeners('video:prepareProgress');
+    },
     transcode: (filePath: string, platform: string) => invoke('video:transcode', filePath, platform),
     transcodeMany: (filePath: string, platforms: string[]) => invoke('video:transcodeMany', filePath, platforms),
     transcodeMedia: (mediaId: number, platforms: string[]) => invoke('video:transcodeMedia', mediaId, platforms),

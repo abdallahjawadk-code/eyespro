@@ -3,7 +3,7 @@
  * يدعم: MP4/H.264, WebM, MP3, M4A وكل صيغ HTML5
  * يفتح في modal كامل فوق الواجهة
  */
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 interface VideoPlayerProps {
   src: string;
@@ -35,13 +35,57 @@ export function VideoPlayer({ src, title, filePath, onClose }: VideoPlayerProps)
   const [editLoading, setEditLoading] = useState(false);
   const [editMsg, setEditMsg] = useState<{ type: 'success' | 'error'; text: string; outputPath?: string } | null>(null);
 
+  // Universal playback: when the browser can't decode the file, convert it in-app
+  // (remux/transcode via ffmpeg) instead of needing an external player.
+  const [preparing, setPreparing] = useState(false);
+  const [prepProgress, setPrepProgress] = useState(0);
+  const [prepMode, setPrepMode] = useState<'remux' | 'transcode' | 'native' | null>(null);
+  const preparingRef = useRef(false);
+  const preparedRef = useRef(false);
+
   const isAudio = src.match(/\.(mp3|m4a|aac|ogg|wav|flac)$/i) != null;
 
   useEffect(() => {
     setPlayerSrc(src);
     setShowEditPanel(false);
     setEditMsg(null);
+    preparedRef.current = false;
+    preparingRef.current = false;
+    setPreparing(false);
+    setPrepProgress(0);
+    setPrepMode(null);
   }, [src]);
+
+  // Live conversion progress from the main process.
+  useEffect(() => {
+    const api = window.eyespro?.video as { onPrepareProgress?: (cb: (d: { pct: number; mode: string }) => void) => (() => void) } | undefined;
+    const off = api?.onPrepareProgress?.((d) => { setPrepProgress(d.pct); setPrepMode(d.mode as 'remux' | 'transcode'); });
+    return typeof off === 'function' ? off : undefined;
+  }, []);
+
+  const prepareInApp = useCallback(async () => {
+    if (!filePath || preparingRef.current || preparedRef.current) return;
+    preparingRef.current = true;
+    setPreparing(true);
+    setError('');
+    setPrepProgress(0);
+    try {
+      const res = await window.eyespro.video.prepareForPlayback(filePath) as { ok: boolean; url?: string; mode?: 'remux' | 'transcode' | 'native'; error?: string };
+      if (res.ok && res.url) {
+        preparedRef.current = true;
+        setPrepMode(res.mode ?? null);
+        setPlayerSrc(res.url);
+        setError('');
+      } else {
+        setError(res.error ?? 'تعذّر تجهيز الفيديو للتشغيل');
+      }
+    } catch {
+      setError('تعذّر تجهيز الفيديو للتشغيل');
+    } finally {
+      preparingRef.current = false;
+      setPreparing(false);
+    }
+  }, [filePath]);
 
   useEffect(() => {
     if (duration > 0 && trimEnd === 0) {
@@ -64,8 +108,13 @@ export function VideoPlayer({ src, title, filePath, onClose }: VideoPlayerProps)
     const onCanPlay = () => setLoaded(true);
     const onErr   = () => {
       const code = v.error?.code;
+      // Unsupported codec/container (code 4): convert in-app instead of failing.
+      if (code === 4 && filePath && !preparedRef.current && !preparingRef.current) {
+        void prepareInApp();
+        return;
+      }
       const msg = code === 4
-        ? 'صيغة الفيديو غير مدعومة — استخدم "فتح خارجياً" أو انتظر تحويله إلى H.264'
+        ? 'تعذّر تجهيز الفيديو للتشغيل في هذه الصيغة'
         : 'تعذّر تشغيل الملف — تأكد أنه مكتمل التحميل';
       setError(msg);
     };
@@ -84,7 +133,7 @@ export function VideoPlayer({ src, title, filePath, onClose }: VideoPlayerProps)
       v.removeEventListener('canplay',        onCanPlay);
       v.removeEventListener('error',          onErr);
     };
-  }, [playerSrc, volume]);
+  }, [playerSrc, volume, prepareInApp, filePath]);
 
   // Close on Escape
   useEffect(() => {
@@ -275,9 +324,22 @@ export function VideoPlayer({ src, title, filePath, onClose }: VideoPlayerProps)
               onClick={togglePlay}
             />
             {/* Loading spinner overlay */}
-            {!loaded && !error && (
+            {!loaded && !error && !preparing && (
               <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.6)' }}>
                 <span style={{ fontSize: 48, color: '#fff' }}>⏳</span>
+              </div>
+            )}
+            {/* In-app conversion overlay (universal playback) */}
+            {preparing && (
+              <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 12, background: 'rgba(0,0,0,0.82)', color: '#fff', padding: 24, textAlign: 'center' }}>
+                <span style={{ fontSize: 40 }}>🎞️</span>
+                <span style={{ fontSize: 14, fontWeight: 600 }}>
+                  {prepMode === 'remux' ? 'جارٍ تجهيز الفيديو للتشغيل…' : 'جارٍ تحويل الفيديو للتشغيل داخل البرنامج…'}
+                </span>
+                <div style={{ width: 220, height: 6, background: 'rgba(255,255,255,0.15)', borderRadius: 4, overflow: 'hidden' }}>
+                  <div style={{ width: `${prepProgress}%`, height: '100%', background: '#22c55e', transition: 'width 0.3s ease' }} />
+                </div>
+                <span style={{ fontSize: 12, color: '#9ca3af' }}>{prepProgress}% — بلا مشغّل خارجي</span>
               </div>
             )}
           </div>

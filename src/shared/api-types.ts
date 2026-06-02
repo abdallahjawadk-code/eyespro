@@ -796,6 +796,11 @@ export interface EyesProApi {
     attachToArticle: (articleId: number) => Inv<{ videoUrl: string; mediaId: number; articleId: number } | null>;
     importPath: (path: string) => Inv<{ ok: boolean; articleId?: number; error?: string }>;
     probe: (filePath: string) => Inv<unknown>;
+    /** Universal in-app playback: returns a playable eyesmedia:// URL, converting (remux/transcode) if needed. */
+    prepareForPlayback: (filePath: string) => Inv<{ url?: string; mode?: 'native' | 'remux' | 'transcode'; error?: string }>;
+    mediaToolsStatus: () => Inv<{ source: 'updated' | 'bundled'; ffmpeg: string; updatedAvailable: boolean }>;
+    updateMediaTools: () => Inv<{ ok: boolean; source: string; error?: string }>;
+    onPrepareProgress: (cb: (data: { pct: number; mode: string }) => void) => (() => void);
     transcode: (filePath: string, platform: string) => Inv<{ outputPath?: string; platform?: string; info?: string }>;
     transcodeMany: (filePath: string, platforms: string[]) => Inv<Record<string, { ok: boolean; outputPath?: string; error?: string; info?: string }>>;
     transcodeMedia: (mediaId: number, platforms: string[]) => Inv<Record<string, { ok: boolean; outputPath?: string; error?: string; info?: string }>>;

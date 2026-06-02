@@ -32,6 +32,8 @@ import {
   switchTenant
 } from '../services/tenant';
 import { checkVideoTools, importVideoToArticle, transcodeForPlatform, validateVideoFile, probeVideo, PLATFORM_SPECS } from '../services/video';
+import { prepareForPlayback } from '../services/video-playback';
+import { getMediaToolsInfo, updateMediaTools } from '../services/media-tools';
 import { getMediaPath, importMediaFile } from '../services/media';
 import { fetchUrlGuarded } from '../net/guarded-fetch';
 import { getPoolStats } from '../net/proxy-pool';
@@ -96,6 +98,19 @@ export function registerAdvancedHandlers(ipcMain: IpcMain, getWin: () => Browser
   ipcMain.handle('video:tools', () => ok(checkVideoTools()));
   ipcMain.handle('video:probe', async (_e, filePath: string) => ok(await probeVideo(String(filePath))));
   ipcMain.handle('video:specs', () => ok(PLATFORM_SPECS));
+
+  // Universal in-app playback: probe → native / remux / transcode to a playable URL.
+  ipcMain.handle('video:prepareForPlayback', async (_e, filePath: string) => {
+    const win = getWin();
+    const result = await prepareForPlayback(String(filePath), (pct, mode) =>
+      win?.webContents.send('video:prepareProgress', { pct, mode }),
+    );
+    return result.ok ? ok(result) : { ok: false, error: result.error };
+  });
+
+  // Bundled-vs-updated ffmpeg info + best-effort auto-update of the full media build.
+  ipcMain.handle('video:mediaToolsStatus', () => ok(getMediaToolsInfo()));
+  ipcMain.handle('video:updateMediaTools', async () => ok(await updateMediaTools()));
   ipcMain.handle('video:pickAndLink', async () => {
     const win = getWin();
     const opts: OpenDialogOptions = {
