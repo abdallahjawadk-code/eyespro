@@ -1,0 +1,1 @@
+export { getMachinePepper } from './password';

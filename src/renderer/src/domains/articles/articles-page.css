@@ -1,0 +1,341 @@
+/* Full-screen articles page */
+.articles-full-page {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  height: 100%;
+  overflow: hidden;
+  max-width: 100%;
+}
+
+.articles-full-page__hdr {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg1);
+  flex-shrink: 0;
+}
+
+.articles-full-page__eyebrow {
+  margin: 0;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--acc);
+}
+
+.articles-full-page__title {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+}
+
+.articles-full-page__desc {
+  display: none;
+}
+
+.articles-full-page__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+
+.articles-full-page__body {
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  padding: 0 8px;
+}
+
+.articles-full-page .ed-layout--articles {
+  display: block;
+  max-width: 100%;
+  min-height: 100%;
+  min-width: 0;
+}
+
+.articles-full-page .ed-layout--articles .ed-main--full {
+  width: 100%;
+  min-width: 0;
+}
+
+.articles-full-page .ed-stage {
+  min-width: 0;
+}
+
+.articles-full-page .ed-stage.has-context {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) min(300px, 30vw);
+  gap: 0;
+  align-items: start;
+}
+
+.articles-full-page .ed-canvas {
+  min-width: 0;
+  overflow-x: hidden;
+}
+
+.articles-full-page .ed-library {
+  padding-bottom: 72px;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.articles-full-page .ed-library-stream {
+  min-width: 0;
+  overflow-x: hidden;
+}
+
+/* ── Compact toolbar stack ── */
+.ax-compact .ax-insights {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.ax-compact .ax-insight {
+  padding: 8px 10px;
+  gap: 8px;
+  border-radius: var(--ax-r);
+}
+
+.ax-compact .ax-insight-icon {
+  width: 28px;
+  height: 28px;
+}
+
+.ax-compact .ax-insight-icon svg {
+  width: 16px;
+  height: 16px;
+}
+
+.ax-compact .ax-insight-value {
+  font-size: 1.15rem;
+}
+
+.ax-compact .ax-insight-label {
+  font-size: 10px;
+}
+
+.ax-compact .ax-command {
+  padding: 6px 8px;
+  margin-bottom: 8px;
+  gap: 5px;
+}
+
+.ax-compact .ax-command-search,
+.ax-compact .ax-command-ingest {
+  flex: 1 1 calc(50% - 4px);
+  max-width: none;
+  min-width: 0;
+}
+
+.ax-compact .ax-command-divider {
+  display: none;
+}
+
+.ax-compact .ax-command-search {
+  height: 32px;
+}
+
+.ax-compact .ax-command-ingest input {
+  height: 32px;
+  font-size: 12px;
+}
+
+.ax-compact .ax-command-ingest .ax-btn {
+  height: 32px;
+  padding: 0 10px;
+  font-size: 11px;
+}
+
+.ax-compact .ax-command-actions {
+  flex: 1 1 100%;
+  margin-inline-start: 0;
+  justify-content: flex-end;
+}
+
+.ax-compact .ax-check-label-text,
+.ax-compact .ax-btn-text {
+  display: none;
+}
+
+.ax-compact .ax-btn--icon,
+.ax-compact .ax-btn--compact-new {
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  justify-content: center;
+}
+
+.ax-compact .ax-btn--compact-new {
+  width: auto;
+  padding: 0 10px;
+}
+
+.ax-compact .ax-btn--compact-new .ax-btn-text {
+  display: inline;
+  font-size: 11px;
+}
+
+.ax-compact .ax-filterbar {
+  padding: 5px 8px;
+  margin-bottom: 8px;
+  min-height: 0;
+  gap: 4px;
+}
+
+.ax-compact .ax-filterbar-status {
+  display: none;
+}
+
+.ax-compact .ax-filterbar-sep:first-of-type {
+  display: none;
+}
+
+.ax-compact .ax-fbtab {
+  height: 26px;
+  padding: 0 8px;
+  font-size: 11px;
+}
+
+.ax-compact .ax-fbselect select {
+  height: 26px;
+  font-size: 11px;
+  min-width: 72px;
+  max-width: 120px;
+  padding-inline-end: 22px;
+}
+
+.ax-compact .ax-fbselect-label {
+  font-size: 9px;
+  padding-inline-end: 3px;
+}
+
+.ax-compact .ax-fbdir {
+  width: 26px;
+  height: 26px;
+}
+
+.ax-compact .ax-fb-count {
+  font-size: 10.5px;
+}
+
+.ax-compact .ax-grid {
+  grid-template-columns: repeat(auto-fill, minmax(min(240px, 100%), 1fr));
+  gap: 12px;
+}
+
+.ax-compact .ax-grid--cards {
+  padding: 4px 0 24px;
+}
+
+.ax-compact .ax-card-body {
+  padding: 12px 12px 8px;
+}
+
+.ax-compact .ax-card-title {
+  font-size: 13.5px;
+}
+
+.ax-compact .ax-card-toolbar {
+  padding: 0 10px 10px;
+}
+
+.ax-compact .ax-card-tool {
+  height: 32px;
+}
+
+.ax-compact .ax-card-overlay-btn {
+  min-width: 120px;
+  padding: 7px 12px;
+  font-size: 11px;
+}
+
+.ax-compact .ax-pager {
+  padding: 8px 10px;
+  margin-top: 8px;
+}
+
+/* ── Compact table (list view) ── */
+.ax-compact .ax-table--compact .ax-chip {
+  font-size: 9px;
+  padding: 1px 6px;
+}
+
+.ax-compact .ax-table-thumb {
+  width: 28px;
+  height: 28px;
+  font-size: 11px;
+}
+
+.ax-compact .ax-table-title span {
+  font-size: 12px;
+}
+
+.ax-compact .ax-table-icon-btn {
+  width: 26px;
+  height: 26px;
+}
+
+.ax-compact .ax-col-check { width: 32px; }
+.ax-compact .ax-col-status { width: 88px; }
+.ax-compact .ax-col-date { width: 76px; }
+.ax-compact .ax-col-actions { width: 88px; }
+
+@media (max-width: 960px) {
+  .articles-full-page .ed-stage.has-context {
+    grid-template-columns: 1fr;
+  }
+
+  .ax-compact .ax-command-search,
+  .ax-compact .ax-command-ingest {
+    flex: 1 1 100%;
+  }
+
+  .ax-compact .ax-insights {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .ax-table--compact .ax-col-date {
+    display: none;
+  }
+
+  .ax-table--compact th.ax-col-date,
+  .ax-table--compact td.ax-col-date {
+    display: none;
+  }
+}
+
+@media (max-width: 640px) {
+  .articles-full-page__hdr {
+    padding: 8px 10px;
+  }
+
+  .ax-compact .ax-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .ax-table--compact .ax-col-status {
+    width: 72px;
+  }
+
+  .ax-table--compact .ax-table-status-col .ax-chip:last-child {
+    display: none;
+  }
+
+  .ax-compact .ax-table-meta {
+    display: none;
+  }
+}

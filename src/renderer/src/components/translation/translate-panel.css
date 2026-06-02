@@ -1,0 +1,133 @@
+.tr-panel {
+  border: 1px solid color-mix(in srgb, var(--acc) 25%, var(--border));
+  border-radius: 14px;
+  padding: 14px 16px;
+  background: linear-gradient(165deg, color-mix(in srgb, var(--acc) 5%, var(--bg2)), var(--bg1));
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.tr-panel--compact {
+  padding: 10px 12px;
+  gap: 8px;
+}
+
+.tr-panel-hdr {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+}
+
+.tr-panel-icon {
+  font-size: 1.25rem;
+  line-height: 1;
+}
+
+.tr-panel-hdr strong {
+  display: block;
+  font-size: 0.9rem;
+  color: var(--t1);
+}
+
+.tr-panel-hint {
+  margin: 4px 0 0;
+  font-size: 0.75rem;
+  color: var(--t3);
+  line-height: 1.45;
+}
+
+.tr-panel-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.tr-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1;
+  min-width: 140px;
+}
+
+.tr-field span {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--t3);
+}
+
+.tr-field select {
+  height: 36px;
+  padding: 0 10px;
+  border-radius: 8px;
+  border: 1.5px solid var(--border);
+  background: var(--input-bg);
+  color: var(--t1);
+  font: inherit;
+  font-size: 0.85rem;
+}
+
+.tr-check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.78rem;
+  color: var(--t2);
+  cursor: pointer;
+}
+
+.tr-panel-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.tr-btn {
+  padding: 7px 14px;
+  border-radius: 9px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  border: 1.5px solid var(--border);
+  background: var(--bg2);
+  color: var(--t1);
+  transition: all 0.15s;
+}
+
+.tr-btn:hover:not(:disabled) {
+  border-color: var(--acc-soft);
+}
+
+.tr-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.tr-btn--primary {
+  background: var(--acc);
+  border-color: var(--acc);
+  color: #fff;
+}
+
+.tr-btn--ghost {
+  background: transparent;
+}
+
+.tr-msg {
+  font-size: 0.78rem;
+  padding: 8px 10px;
+  border-radius: 8px;
+}
+
+.tr-msg--ok {
+  background: color-mix(in srgb, var(--ok) 12%, transparent);
+  color: var(--ok);
+  border: 1px solid color-mix(in srgb, var(--ok) 30%, transparent);
+}
+
+.tr-msg--err {
+  background: color-mix(in srgb, var(--err) 12%, transparent);
+  color: var(--err);
+  border: 1px solid color-mix(in srgb, var(--err) 30%, transparent);
+}

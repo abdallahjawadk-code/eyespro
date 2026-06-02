@@ -1,0 +1,78 @@
+/* ── Tone Analyzer ────────────────────────────────────────────────────── */
+.tone-root {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 14px;
+  background: var(--surface, #1a1d2e);
+  border-radius: 12px;
+  border: 1px solid var(--border, #2a2f45);
+}
+
+.tone-detected {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  border-inline-start: 3px solid;
+  background: var(--surface2, #1e2235);
+}
+.tone-icon { font-size: 20px; }
+.tone-label {
+  font-size: 10px;
+  color: var(--muted, #64748b);
+  font-weight: 500;
+  margin-bottom: 2px;
+}
+.tone-value {
+  font-size: 14px;
+  font-weight: 700;
+}
+
+/* Bars */
+.tone-bars {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.tone-bar-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+}
+.tone-bar-ico  { width: 18px; text-align: center; }
+.tone-bar-lbl  { width: 60px; color: var(--muted, #64748b); font-size: 11px; }
+.tone-bar-track {
+  flex: 1;
+  height: 6px;
+  background: var(--border, #2a2f45);
+  border-radius: 99px;
+  overflow: hidden;
+}
+.tone-bar-fill {
+  height: 100%;
+  border-radius: 99px;
+  transition: width .4s ease;
+}
+.tone-bar-val {
+  width: 24px;
+  text-align: end;
+  font-size: 11px;
+  color: var(--muted, #64748b);
+}
+
+/* Readability */
+.tone-readability, .tone-sentiment {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 10px;
+  background: var(--surface2, #1e2235);
+  border-radius: 8px;
+  font-size: 12px;
+}
+.tone-read-lbl, .tone-sent-lbl { color: var(--muted, #64748b); font-weight: 500; }
+.tone-read-val, .tone-sent-val { font-weight: 700; }
+.tone-read-hint { font-size: 10px; color: var(--muted, #64748b); font-weight: 400; }

@@ -1,0 +1,33 @@
+{
+  "sectors": [
+    { "id": "all", "icon": "🌐", "labelAr": "الكل", "labelEn": "All" },
+    { "id": "news", "icon": "📰", "labelAr": "أخبار", "labelEn": "News" },
+    { "id": "entertainment", "icon": "🎬", "labelAr": "أفلام وترفيه", "labelEn": "Movies & TV" },
+    { "id": "science", "icon": "🔬", "labelAr": "علوم", "labelEn": "Science" },
+    { "id": "arts", "icon": "🎨", "labelAr": "فنون", "labelEn": "Arts" },
+    { "id": "sports", "icon": "⚽", "labelAr": "رياضة", "labelEn": "Sports" },
+    { "id": "tech", "icon": "💻", "labelAr": "تقنية", "labelEn": "Tech" },
+    { "id": "gaming", "icon": "🎮", "labelAr": "ألعاب", "labelEn": "Gaming" },
+    { "id": "lifestyle", "icon": "✨", "labelAr": "منوعات", "labelEn": "Lifestyle" }
+  ],
+  "sectorKeywords": {
+    "news": ["أخبار", "news", "عاجل", "سياسة", "وكالة"],
+    "entertainment": ["افلام", "أفلام", "فيلم", "سينما", "movies", "film", "cinema", "مسلسل", "series", "tv", "دراما"],
+    "science": ["علوم", "science", "بحث", "research", "فيزياء", "biology", "طب"],
+    "arts": ["فن", "فنون", "arts", "art", "ثقافة", "culture", "موسيقى", "music"],
+    "sports": ["رياضة", "sports", "كرة", "football", "soccer"],
+    "tech": ["تقنية", "tech", "technology", "برمجة", "startup"],
+    "gaming": ["ألعاب", "gaming", "games", "videogame"],
+    "lifestyle": ["منوعات", "سفر", "travel", "طبخ", "food", "أزياء", "fashion", "صحة", "health"]
+  },
+  "sectorProviders": {
+    "news": { "google_news": true, "official": true, "feedly": true, "catalog": true, "ai": true, "rsshub": true, "reddit": false, "podcast": false, "openalex": false, "youtube": false },
+    "entertainment": { "google_news": false, "official": false, "feedly": true, "catalog": true, "ai": true, "rsshub": true, "reddit": true, "podcast": true, "openalex": false, "youtube": true },
+    "science": { "google_news": false, "official": false, "feedly": true, "catalog": true, "ai": true, "rsshub": true, "reddit": true, "podcast": true, "openalex": true, "youtube": true },
+    "arts": { "google_news": false, "official": false, "feedly": true, "catalog": true, "ai": true, "rsshub": true, "reddit": true, "podcast": true, "openalex": false, "youtube": true },
+    "sports": { "google_news": true, "official": false, "feedly": true, "catalog": true, "ai": true, "rsshub": true, "reddit": true, "podcast": true, "openalex": false, "youtube": false },
+    "tech": { "google_news": false, "official": false, "feedly": true, "catalog": true, "ai": true, "rsshub": true, "reddit": true, "podcast": true, "openalex": false, "youtube": true },
+    "gaming": { "google_news": false, "official": false, "feedly": true, "catalog": true, "ai": true, "rsshub": true, "reddit": true, "podcast": true, "openalex": false, "youtube": true },
+    "lifestyle": { "google_news": false, "official": false, "feedly": true, "catalog": true, "ai": true, "rsshub": true, "reddit": true, "podcast": true, "openalex": false, "youtube": false }
+  }
+}

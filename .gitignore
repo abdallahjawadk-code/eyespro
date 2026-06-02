@@ -1,0 +1,44 @@
+# ── Dependencies ──
+node_modules/
+
+# ── Build output / artifacts ──
+out/
+release/
+dist/
+build-log.txt
+*.jsc
+
+# ── Logs ──
+*.log
+_e.log
+_o.log
+
+# ── Test / coverage artifacts ──
+coverage/
+playwright-report/
+test-results/
+
+# ── Secrets & environment ──
+.env
+.env.local
+.env.*.local
+# keep .env.example tracked
+
+# ── Code-signing certificates / keys ──
+*.pfx
+*.p12
+*.pem
+*.key
+*.cer
+
+# ── Databases (regenerated via scripts/prepare-clean-build.cjs) ──
+*.sqlite
+*.sqlite-wal
+*.sqlite-shm
+*.db
+
+# ── OS / editor ──
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

@@ -1,0 +1,447 @@
+/* EyesPro workspace shell — ep-* */
+
+/* Single scroll: hub page scrolls; embedded panels do not nest scroll */
+.ep-page {
+  flex: 1;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+}
+
+.ep-page .ep-panel--embedded .page-content,
+.ep-page .ep-panel--wide .page-content,
+.ep-page .ep-panel--live .page-content,
+.ep-page .ep-panel--live .ls-page {
+  overflow: visible;
+  flex: none;
+  min-height: 0;
+}
+
+.ep-page .ep-panel--wide .page-content.ap-page {
+  overflow: visible;
+  padding: 0;
+}
+
+.ep-inner {
+  max-width: 1680px;
+  margin: 0 auto;
+  padding: 0 clamp(16px, 3vw, 28px) 48px;
+  animation: ep-enter 0.45s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@keyframes ep-enter {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+}
+
+.ep-hero {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 24px 0 20px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 20px;
+}
+
+.ep-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+  padding: 4px 12px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--acc);
+  background: var(--acc-soft);
+  border: 1px solid color-mix(in srgb, var(--acc) 28%, transparent);
+}
+
+.ep-eyebrow-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--acc);
+  animation: ep-pulse 2s ease infinite;
+}
+
+@keyframes ep-pulse {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.5;
+    transform: scale(1.3);
+  }
+}
+
+.ep-hero h1 {
+  margin: 0;
+  font-size: clamp(1.5rem, 2.5vw, 2rem);
+  font-weight: 800;
+  letter-spacing: -0.03em;
+}
+
+.ep-hero p {
+  margin: 8px 0 0;
+  max-width: 560px;
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--t2);
+}
+
+.ep-hero-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.ep-tabs {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 6px;
+  padding: 6px;
+  margin-bottom: 20px;
+  border-radius: 14px;
+  border: 1px solid var(--border);
+  background: var(--bg2);
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scrollbar-width: thin;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Grouped tabs — editorial / insights hubs */
+.ep-tab-groups {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 0;
+  padding: 6px 8px;
+  margin-bottom: 20px;
+  border-radius: 14px;
+  border: 1px solid var(--border);
+  background: var(--bg2);
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scrollbar-width: thin;
+}
+
+.ep-tab-group {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
+  padding: 2px 4px;
+}
+
+.ep-tab-group-label {
+  flex-shrink: 0;
+  padding: 0 6px;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--t3, var(--t2));
+  opacity: 0.75;
+}
+
+.ep-tab-group-items {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.ep-tab-group-sep {
+  width: 1px;
+  height: 24px;
+  margin: 0 8px;
+  background: var(--border);
+  flex-shrink: 0;
+}
+
+@media (max-width: 719px) {
+  .ep-tab-groups {
+    flex-wrap: nowrap;
+  }
+  .ep-tab-group {
+    flex-wrap: nowrap;
+  }
+  .ep-tab-group-label {
+    display: none;
+  }
+}
+
+@media (min-width: 720px) {
+  .ep-tabs {
+    flex-wrap: wrap;
+    overflow-x: visible;
+  }
+}
+
+.ep-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  border: none;
+  border-radius: 10px;
+  background: transparent;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 650;
+  color: var(--t2);
+  cursor: pointer;
+  transition:
+    background 0.2s,
+    color 0.2s,
+    transform 0.15s;
+}
+
+.ep-tab:hover {
+  color: var(--t1);
+  background: var(--bg3);
+}
+
+.ep-tab.is-active {
+  color: var(--acc);
+  background: var(--bg1);
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+}
+
+.ep-tab-count {
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 800;
+  background: var(--bg3);
+  color: var(--t2);
+}
+
+.ep-tab.is-active .ep-tab-count {
+  background: var(--acc-soft);
+  color: var(--acc);
+}
+
+.ep-panel {
+  animation: ep-panel-in 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@keyframes ep-panel-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+
+.ep-panel--embedded .page-content {
+  padding: 0;
+  animation: none;
+}
+
+/* Keep per-tab actions; hide duplicate titles from embedded pages */
+.ep-panel--embedded .page-hdr {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 0 0 16px;
+  margin: 0 0 4px;
+  border: none;
+  background: transparent;
+  animation: ep-subhdr-in 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@keyframes ep-subhdr-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+}
+
+.ep-panel--embedded .page-hdr h1 {
+  display: none;
+}
+
+.ep-panel--embedded .page-hdr-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
+  width: 100%;
+}
+
+/* Nested tabs inside embedded pages (e.g. templates) */
+.ep-subtabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 18px;
+  padding: 4px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: var(--bg1);
+}
+
+.ep-subtab {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 650;
+  color: var(--t2);
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s;
+}
+
+.ep-subtab:hover {
+  color: var(--t1);
+  background: var(--bg3);
+}
+
+.ep-subtab.is-active {
+  color: var(--acc);
+  background: var(--acc-soft);
+}
+
+.ep-panel--embedded .page-hdr .sp-msg {
+  flex: 1 1 100%;
+  order: -1;
+}
+
+.ep-panel--settings .sp-layout {
+  min-height: calc(100vh - 280px);
+}
+
+.ep-panel--settings .page-hdr h1 {
+  display: none;
+}
+
+.ep-panel--wide .page-content {
+  max-width: none;
+}
+
+.ep-page--settings {
+  overflow: hidden;
+}
+
+.ep-page--settings .ep-inner {
+  max-width: 1800px;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  padding-bottom: 24px;
+}
+
+.ep-page--settings .ep-hero,
+.ep-page--settings .ep-tabs {
+  flex-shrink: 0;
+}
+
+.ep-page--settings .ep-panel {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.ep-panel--settings .sp-layout {
+  flex: 1;
+  min-height: 0;
+  height: 100%;
+  max-height: none;
+}
+
+.ep-panel--embedded .page-hdr[style] {
+  justify-content: flex-end;
+}
+
+/* Trend radar embedded in content hub */
+.ep-panel--embedded .tr-header-copy {
+  display: none;
+}
+
+.ep-panel--embedded .tr-header {
+  justify-content: flex-end;
+  margin-bottom: 12px;
+}
+
+/* ── RTL hub polish ── */
+html[dir='rtl'] .ep-tab.is-active {
+  box-shadow: -2px 2px 12px rgba(0, 0, 0, 0.08);
+}
+
+html[dir='rtl'] .dh-hub-arrow {
+  transform: translateX(4px);
+}
+
+html[dir='rtl'] .dh-hub-card:hover .dh-hub-arrow {
+  transform: translateX(0);
+}
+
+html[dir='rtl'] .ep-hero-actions {
+  margin-inline-start: auto;
+}
+
+.ep-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 38px;
+  padding: 0 16px;
+  border-radius: 10px;
+  border: 1px solid transparent;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 650;
+  cursor: pointer;
+  text-decoration: none;
+  transition:
+    transform 0.12s,
+    box-shadow 0.2s,
+    background 0.15s;
+}
+
+.ep-btn:active {
+  transform: scale(0.98);
+}
+
+.ep-btn--primary {
+  background: linear-gradient(135deg, var(--acc), color-mix(in srgb, var(--acc) 70%, #a855f7));
+  color: #fff;
+  box-shadow: 0 4px 20px var(--acc-glow);
+}
+
+.ep-btn--ghost {
+  background: transparent;
+  border-color: var(--border);
+  color: var(--t1);
+}
+
+.ep-btn--ghost:hover {
+  background: var(--acc-soft);
+  border-color: color-mix(in srgb, var(--acc) 30%, var(--border));
+  color: var(--acc);
+}

@@ -1,0 +1,168 @@
+{
+  "name": "eyespro",
+  "version": "1.0.0",
+  "description": "EyesPro — professional Arabic news management & publishing platform",
+  "main": "./out/main/index.cjs",
+  "author": {
+    "name": "Abdallahjk",
+    "email": "admin@eyespro.app"
+  },
+  "copyright": "Copyright © 2025–2026 Abdallahjk. All rights reserved.",
+  "license": "UNLICENSED",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "electron-vite dev",
+    "dev": "electron-vite dev",
+    "build": "electron-vite build",
+    "preview": "electron-vite preview",
+    "typecheck": "tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p tsconfig.web.json",
+    "lint": "eslint src --ext .ts,.tsx --max-warnings 0",
+    "test:e2e": "playwright test --project=electron",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "bench": "vitest bench",
+    "rebuild:native": "electron-builder install-app-deps",
+    "build:win": "npm run build && node scripts/make-license-rtf.cjs && node scripts/create-installer-images.cjs && node scripts/protect-renderer.cjs && node scripts/compile-bytecode.cjs && electron-builder --win && node scripts/apply-fuses.cjs",
+    "build:win:dir": "npm run build && node scripts/make-license-rtf.cjs && node scripts/create-installer-images.cjs && node scripts/protect-renderer.cjs && node scripts/compile-bytecode.cjs && electron-builder --win --dir && node scripts/apply-fuses.cjs",
+    "build:win:fast": "npm run build && electron-builder --win --dir",
+    "build:secure": "npm run build:obf && npm run build:pack:secure",
+    "build:obf": "webpack --config build/webpack.obf.js --mode=production",
+    "build:pack:secure": "electron-builder --win --x64 --publish=never",
+    "build:clean": "node scripts/prepare-clean-build.cjs && npm run build && npm run build:pack:clean",
+    "build:pack:clean": "electron-builder --win --x64 --publish=never --config.extraResources=\"[{from: 'data/prod-database.sqlite', to: 'database.sqlite'}]\"",
+    "clean:data": "node scripts/prepare-clean-build.cjs",
+    "postinstall": "node scripts/postinstall-native.cjs"
+  },
+  "dependencies": {
+    "@sentry/electron": "^7.13.0",
+    "@tanstack/react-query": "^5.100.14",
+    "@types/ffmpeg-static": "^3.0.3",
+    "@types/fluent-ffmpeg": "^2.1.28",
+    "argon2": "^0.41.1",
+    "better-sqlite3": "^12.10.0",
+    "bytenode": "^1.5.7",
+    "cheerio": "1.2.0",
+    "docx": "^9.7.1",
+    "electron-updater": "^6.3.9",
+    "ffmpeg-static": "^5.3.0",
+    "fluent-ffmpeg": "^2.1.3",
+    "i18next": "^25.8.13",
+    "nodemailer": "^6.10.1",
+    "react": "^19.2.6",
+    "react-dom": "^19.2.6",
+    "react-i18next": "^16.5.4",
+    "react-router-dom": "^7.13.0",
+    "zustand": "^5.0.14"
+  },
+  "devDependencies": {
+    "@axe-core/playwright": "^4.11.3",
+    "@electron/fuses": "^2.1.1",
+    "@playwright/test": "^1.60.0",
+    "@tiptap/extension-image": "^3.23.6",
+    "@tiptap/extension-link": "^3.23.6",
+    "@tiptap/extension-placeholder": "^3.23.6",
+    "@tiptap/extension-text-align": "^3.23.6",
+    "@tiptap/react": "^3.23.6",
+    "@tiptap/starter-kit": "^3.23.6",
+    "@types/better-sqlite3": "^7.6.13",
+    "@types/nodemailer": "^6.4.17",
+    "@types/react": "^19.2.15",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^5.1.4",
+    "electron": "^29.4.6",
+    "electron-builder": "^24.13.3",
+    "electron-vite": "^5.0.0",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "eslint-plugin-security": "^4.0.0",
+    "javascript-obfuscator": "^4.2.2",
+    "playwright-core": "^1.60.0",
+    "terser-webpack-plugin": "^5.6.1",
+    "ts-loader": "^9.6.0",
+    "tsx": "^4.22.3",
+    "typescript": "^6.0.3",
+    "typescript-eslint": "^8.0.0",
+    "vite": "^7.3.1",
+    "vitest": "^4.1.7",
+    "webpack": "^5.107.2",
+    "webpack-cli": "^7.0.3",
+    "webpack-obfuscator": "^3.6.1"
+  },
+  "build": {
+    "appId": "com.abdallahjk.eyespro",
+    "productName": "EyesPro",
+    "copyright": "Copyright © Abdallahjk",
+    "directories": {
+      "output": "release",
+      "buildResources": "resources"
+    },
+    "files": [
+      "out/**/*",
+      "package.json"
+    ],
+    "asar": true,
+    "asarUnpack": [
+      "**/better-sqlite3/**",
+      "**/*.node",
+      "**/ffmpeg-static/**",
+      "**/bytenode/**",
+      "out/main/index.jsc",
+      "out/main/chunks/**"
+    ],
+    "extraResources": [
+      {
+        "from": "data/prod-database.sqlite",
+        "to": "database.sqlite",
+        "filter": [
+          "**/*"
+        ]
+      }
+    ],
+    "npmRebuild": false,
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "resources/icon.ico",
+      "signingHashAlgorithms": [
+        "sha256"
+      ],
+      "signDlls": false
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "installerLanguages": [
+        "ar",
+        "en"
+      ],
+      "shortcutName": "EyesPro",
+      "include": "resources/installer.nsh",
+      "license": "resources/license.rtf",
+      "installerSidebar": "resources/sidebar.bmp",
+      "installerHeader": "resources/header.bmp",
+      "createStartMenuShortcut": true,
+      "createDesktopShortcut": "always",
+      "runAfterFinish": true,
+      "deleteAppDataOnUninstall": false,
+      "artifactName": "EyesPro-Setup-${version}.exe",
+      "menuCategory": "EyesPro",
+      "displayLanguageSelector": true
+    },
+    "portable": {
+      "artifactName": "EyesPro-${version}-Portable.exe"
+    }
+  }
+}

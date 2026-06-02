@@ -1,0 +1,17 @@
+{
+  "name": "eyespro-license-server",
+  "version": "1.0.0",
+  "description": "EyesPro License Activation Server",
+  "main": "server.cjs",
+  "scripts": {
+    "start": "node server.cjs",
+    "keygen": "node keygen.cjs",
+    "keygen:push": "node keygen.cjs --push"
+  },
+  "dependencies": {
+    "better-sqlite3": "^12.0.0"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
