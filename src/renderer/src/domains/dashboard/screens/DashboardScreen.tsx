@@ -18,6 +18,8 @@ type Dash = {
 
 type PipeStats = { pending: number; running: number; failed: number };
 
+type AuditRow = { id: number; ok: boolean; url?: string; duration_ms?: number; created_at?: string };
+
 export function DashboardScreen() {
   const { t } = useTranslation();
   const navigate = useNavigate();
@@ -26,7 +28,7 @@ export function DashboardScreen() {
   const loading = dashQuery.loading || pipeQuery.loading;
 
   const [torActive, setTorActive] = useState(false);
-  const [latestAudit, setLatestAudit] = useState<any[]>([]);
+  const [latestAudit, setLatestAudit] = useState<AuditRow[]>([]);
 
   useEffect(() => {
     window.eyespro.tor.status()
@@ -40,9 +42,10 @@ export function DashboardScreen() {
     window.eyespro.fetch.audit({ limit: 4 })
       .then((res) => {
         if (res && Array.isArray(res)) {
-          setLatestAudit(res);
-        } else if (res && (res as any).data && Array.isArray((res as any).data)) {
-          setLatestAudit((res as any).data);
+          setLatestAudit(res as AuditRow[]);
+        } else {
+          const data = (res as { data?: unknown })?.data;
+          if (Array.isArray(data)) setLatestAudit(data as AuditRow[]);
         }
       })
       .catch(() => null);
@@ -141,7 +144,7 @@ export function DashboardScreen() {
                 لا توجد عمليات جلب مسجلة حالياً.
               </div>
             ) : (
-              latestAudit.map((log: any) => {
+              latestAudit.map((log) => {
                 const dateStr = log.created_at ? new Date(log.created_at).toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit' }) : '—';
                 return (
                   <div key={log.id} style={{

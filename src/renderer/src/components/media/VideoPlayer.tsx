@@ -534,7 +534,7 @@ export function VideoPlayer({ src, title, filePath, onClose }: VideoPlayerProps)
                 <label style={{ fontSize: 12, color: '#9ca3af', display: 'block', marginBottom: 4 }}>اختر أبعاد المنصة المستهدفة:</label>
                 <select
                   value={resizePlatform}
-                  onChange={(e) => setResizePlatform(e.target.value as any)}
+                  onChange={(e) => setResizePlatform(e.target.value as typeof resizePlatform)}
                   style={inputStyle}
                 >
                   <option value="tiktok">تيك توك / ريلز (9:16 - عمودي)</option>

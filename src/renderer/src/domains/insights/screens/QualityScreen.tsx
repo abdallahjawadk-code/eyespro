@@ -187,8 +187,10 @@ interface QualityDetailsPanelProps {
   onReCheck: () => void;
 }
 
+type QualityReport = { check_type?: string; score: number; result_json?: string };
+
 function QualityDetailsPanel({ itemId, onReCheck }: QualityDetailsPanelProps) {
-  const [reports, setReports] = useState<any[]>([]);
+  const [reports, setReports] = useState<QualityReport[]>([]);
   const [loading, setLoading] = useState(true);
   const [checking, setChecking] = useState(false);
 
@@ -197,7 +199,7 @@ function QualityDetailsPanel({ itemId, onReCheck }: QualityDetailsPanelProps) {
     try {
       const res = await window.eyespro.quality.reports(itemId);
       if (res.ok && res.data) {
-        setReports(res.data);
+        setReports(res.data as QualityReport[]);
       }
     } catch (err) {
       console.error(err);
@@ -285,7 +287,7 @@ function QualityDetailsPanel({ itemId, onReCheck }: QualityDetailsPanelProps) {
                   )}
                 </div>
               );
-            } catch (e) {
+            } catch {
               return <div style={{ fontSize: 11, color: 'var(--fg-muted)' }}>بيانات إضافية: {latestReport.result_json}</div>;
             }
           })()}

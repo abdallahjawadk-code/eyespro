@@ -9,6 +9,14 @@ import { Btn, Card, Field, Input, Msg, Panel } from '../../../ui';
 
 type SettingsTab = 'general' | 'ai' | 'social' | 'privacy' | 'about';
 
+type TorStatus = {
+  enabled?: boolean;
+  status?: string;
+  bootstrap?: string;
+  socksPort?: number;
+  controlPort?: number;
+};
+
 export function SettingsScreen() {
   const { t } = useTranslation();
   const location = useLocation();
@@ -17,7 +25,7 @@ export function SettingsScreen() {
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const ai = useAiSettings();
 
-  const [torStatus, setTorStatus] = useState<any>(null);
+  const [torStatus, setTorStatus] = useState<TorStatus | null>(null);
   const [rotating, setRotating] = useState(false);
 
   const load = useCallback(async () => {
@@ -33,7 +41,7 @@ export function SettingsScreen() {
       try {
         const res = await window.eyespro.tor.status().catch(() => null);
         if (res?.ok && res?.data) {
-          setTorStatus(res.data);
+          setTorStatus(res.data as TorStatus);
         }
       } catch {}
     };
@@ -182,7 +190,7 @@ export function SettingsScreen() {
                     style={{ width: 20, height: 20, cursor: 'pointer' }}
                     onChange={async (e) => {
                       const checked = e.target.checked;
-                      setTorStatus((prev: any) => prev ? { ...prev, enabled: checked } : null);
+                      setTorStatus((prev) => prev ? { ...prev, enabled: checked } : null);
                       await window.eyespro.tor.toggle(checked).catch(() => null);
                       void load();
                     }}
@@ -238,9 +246,10 @@ export function SettingsScreen() {
                             setRotating(true);
                             const res = await window.eyespro.tor.rotate().catch(() => ({ ok: false }));
                             setRotating(false);
+                            const rotated = Boolean(res?.ok && (res as { data?: { success?: boolean } }).data?.success);
                             setMsg({
-                              ok: res?.ok && (res as any).data?.success,
-                              text: res?.ok && (res as any).data?.success ? 'تم تدوير هوية Tor بنجاح وبناء مسار اتصال جديد.' : 'فشل تدوير هوية Tor. يرجى المحاولة لاحقاً.'
+                              ok: rotated,
+                              text: rotated ? 'تم تدوير هوية Tor بنجاح وبناء مسار اتصال جديد.' : 'فشل تدوير هوية Tor. يرجى المحاولة لاحقاً.'
                             });
                           }}
                         >

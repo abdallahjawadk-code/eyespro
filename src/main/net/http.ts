@@ -87,7 +87,7 @@ export function connectSocks5Agent(socksHost: string, socksPort: number): https.
       })
       .catch((err) => cb(err));
   };
-  (agent as any).createConnection = createConnection;
+  (agent as unknown as { createConnection: typeof createConnection }).createConnection = createConnection;
   return agent;
 }
 
@@ -105,7 +105,7 @@ function connectSocks5HttpAgent(socksHost: string, socksPort: number): http.Agen
       })
       .catch((err) => cb(err));
   };
-  (agent as any).createConnection = createConnection;
+  (agent as unknown as { createConnection: typeof createConnection }).createConnection = createConnection;
   return agent;
 }
 

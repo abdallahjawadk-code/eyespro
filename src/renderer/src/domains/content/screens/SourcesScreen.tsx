@@ -85,8 +85,18 @@ function StatusIndicator({ enabled, isFetching, hasError }: { enabled: boolean; 
 }
 
 /* ── ActivityDrawer Component ── */
+type FetchLogRow = {
+  id: number;
+  ok?: boolean;
+  status_code?: number;
+  method?: string;
+  duration_ms?: number;
+  bytes_read?: number;
+  created_at?: string;
+};
+
 interface ActivityDrawerProps {
-  logs: any[];
+  logs: FetchLogRow[];
   loading: boolean;
   lastError: string | null;
 }
@@ -137,7 +147,7 @@ function ActivityDrawer({ logs, loading, lastError }: ActivityDrawerProps) {
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-          {logs.map((log: any) => {
+          {logs.map((log) => {
             const dateStr = log.created_at ? new Date(log.created_at).toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : '—';
             return (
               <div key={log.id} style={{
@@ -205,7 +215,7 @@ export function SourcesScreen() {
   const [activeTab, setActiveTab] = useState<'all' | 'active' | 'disabled' | 'errors'>('all');
   const [platformFilter, setPlatformFilter] = useState<string>('all');
   const [expandedId, setExpandedId] = useState<number | null>(null);
-  const [auditLogs, setAuditLogs] = useState<any[]>([]);
+  const [auditLogs, setAuditLogs] = useState<FetchLogRow[]>([]);
   const [loadingAudit, setLoadingAudit] = useState(false);
   const [fetchingIds, setFetchingIds] = useState<Set<number>>(new Set());
 
@@ -250,9 +260,10 @@ export function SourcesScreen() {
     try {
       const res = await window.eyespro.fetch.audit({ sourceId: id, limit: 5 }).catch(() => ({ ok: false, data: [] }));
       if (res && Array.isArray(res)) {
-        setAuditLogs(res);
-      } else if (res && (res as any).data && Array.isArray((res as any).data)) {
-        setAuditLogs((res as any).data);
+        setAuditLogs(res as FetchLogRow[]);
+      } else {
+        const data = (res as { data?: unknown })?.data;
+        if (Array.isArray(data)) setAuditLogs(data as FetchLogRow[]);
       }
     } catch {
       setAuditLogs([]);
@@ -315,7 +326,7 @@ export function SourcesScreen() {
     const url = normalizeSourceUrl(data.url);
     if (!url) return { ok: false, error: t('sources.discovery.invalidUrl') };
 
-    const createPayload: any = {
+    const createPayload: Record<string, unknown> = {
       name: data.name.trim() || url,
       url,
       source_type: data.source_type,
@@ -474,7 +485,7 @@ export function SourcesScreen() {
             <button
               key={tInfo.key}
               type="button"
-              onClick={() => setActiveTab(tInfo.key as any)}
+              onClick={() => setActiveTab(tInfo.key as typeof activeTab)}
               style={{
                 padding: '6px 16px',
                 borderRadius: 9,
@@ -632,7 +643,7 @@ interface SourceCardProps {
   source: SourceRow;
   isFetching: boolean;
   isExpanded: boolean;
-  auditLogs: any[];
+  auditLogs: FetchLogRow[];
   loadingAudit: boolean;
   onToggle: () => void;
   onFetch: () => void;

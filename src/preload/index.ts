@@ -432,7 +432,7 @@ const api: EyesProApi = {
     toggle: (enabled: boolean) => invoke('tor:toggle', enabled),
   },
   crawler: {
-    crawl: (monitorId: number, startUrl: string, opts?: any) => invoke('crawler:crawl', monitorId, startUrl, opts),
+    crawl: (monitorId: number, startUrl: string, opts?: { maxDepth?: number; maxPages?: number }) => invoke('crawler:crawl', monitorId, startUrl, opts),
   },
 
   on: (channel: string, cb: (...args: unknown[]) => void) => {

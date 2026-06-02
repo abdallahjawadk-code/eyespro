@@ -38,7 +38,7 @@ import { getPoolStats } from '../net/proxy-pool';
 import { isPlaywrightAvailable } from '../net/browser-fetch';
 import { getSetting, setSetting } from '../services/settings';
 import { getTorStatus, rotateTorIp, startTor, stopTor } from '../services/tor-manager';
-import { crawlWebsite } from '../services/deep-crawler';
+import { crawlWebsite, type CrawlOptions } from '../services/deep-crawler';
 import { vaultAvailable } from '../security/secrets-vault';
 import { generateReport, generateReportHtml } from '../services/report-generator';
 import type { ApiResult } from '../../shared/api-types';
@@ -715,7 +715,7 @@ export function registerAdvancedHandlers(ipcMain: IpcMain, getWin: () => Browser
     } catch (e) { return { ok: false, error: (e as Error).message }; }
   });
 
-  ipcMain.handle('crawler:crawl', async (_e, monitorId: number, startUrl: string, opts?: any) => {
+  ipcMain.handle('crawler:crawl', async (_e, monitorId: number, startUrl: string, opts?: CrawlOptions) => {
     try {
       const result = await crawlWebsite(sanitizeInt(monitorId, 1), String(startUrl), opts || {});
       return ok(result);
