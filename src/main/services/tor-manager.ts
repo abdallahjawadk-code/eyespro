@@ -16,8 +16,9 @@ let activeControlPort = 9051;
 let torStatus: 'stopped' | 'starting' | 'ready' | 'error' = 'stopped';
 let lastBootstrapMsg = '';
 
-const TOR_VERSION = '14.0.1';
+const TOR_VERSION = '15.0.14';
 const TOR_URL = `https://dist.torproject.org/torbrowser/${TOR_VERSION}/tor-expert-bundle-windows-x86_64-${TOR_VERSION}.tar.gz`;
+const DOWNLOAD_TIMEOUT_MS = 30_000;
 
 function getBinDir(): string {
   const dir = join(app.getPath('userData'), 'bin');
@@ -105,39 +106,53 @@ function downloadTor(): Promise<string> {
   log.info(`Downloading Tor Expert Bundle from: ${TOR_URL}`);
   return new Promise((resolve, reject) => {
     const file = fs.createWriteStream(tarPath);
-    const request = https.get(TOR_URL, (response) => {
-      if (response.statusCode && response.statusCode >= 300 && response.statusCode < 400 && response.headers.location) {
-        // Handle redirect
-        https.get(response.headers.location, (redirectResponse) => {
-          redirectResponse.pipe(file);
-          file.on('finish', () => {
-            file.close();
-            resolve(tarPath);
-          });
-        }).on('error', (err) => {
-          fs.unlinkSync(tarPath);
-          reject(err);
-        });
-        return;
-      }
-
-      if (response.statusCode !== 200) {
-        fs.unlinkSync(tarPath);
-        reject(new Error(`Failed to download Tor: HTTP ${response.statusCode}`));
-        return;
-      }
-
-      response.pipe(file);
-      file.on('finish', () => {
-        file.close();
-        resolve(tarPath);
-      });
-    });
-
-    request.on('error', (err) => {
-      fs.unlinkSync(tarPath);
+    let settled = false;
+    const fail = (err: Error) => {
+      if (settled) return;
+      settled = true;
+      try { file.close(); } catch { /* noop */ }
+      try { fs.unlinkSync(tarPath); } catch { /* noop */ }
       reject(err);
-    });
+    };
+
+    // Follow redirects manually (up to 5) and apply a hard timeout so a blocked
+    // or unreachable mirror fails clearly instead of hanging the install forever.
+    const fetchUrl = (url: string, redirectsLeft: number) => {
+      const request = https.get(url, (response) => {
+        const status = response.statusCode ?? 0;
+
+        if (status >= 300 && status < 400 && response.headers.location) {
+          response.resume(); // drain so the socket can be reused/closed
+          if (redirectsLeft <= 0) { fail(new Error('Too many redirects')); return; }
+          fetchUrl(new URL(response.headers.location, url).toString(), redirectsLeft - 1);
+          return;
+        }
+
+        if (status !== 200) {
+          response.resume();
+          fail(new Error(`Failed to download Tor: HTTP ${status}`));
+          return;
+        }
+
+        response.pipe(file);
+        file.on('finish', () => {
+          if (settled) return;
+          settled = true;
+          file.close();
+          resolve(tarPath);
+        });
+        file.on('error', fail);
+      });
+
+      request.setTimeout(DOWNLOAD_TIMEOUT_MS, () => {
+        request.destroy(
+          new Error(`انتهت مهلة تنزيل Tor (${DOWNLOAD_TIMEOUT_MS / 1000} ثانية) — قد يكون موقع Tor محجوباً في شبكتك`),
+        );
+      });
+      request.on('error', fail);
+    };
+
+    fetchUrl(TOR_URL, 5);
   });
 }
 
