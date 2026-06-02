@@ -8,7 +8,6 @@ import { parseContentTab, type ContentTab } from './types';
 import { SourcesScreen } from './screens/SourcesScreen';
 import { TemplatesScreen } from './screens/TemplatesScreen';
 import { TrendsScreen } from './screens/TrendsScreen';
-import { MediaScreen } from './screens/MediaScreen';
 
 export function ContentDomain() {
   const { t } = useTranslation();
@@ -18,14 +17,12 @@ export function ContentDomain() {
     { id: 'sources', label: t('nav.sources'), icon: '📡' },
     { id: 'templates', label: t('nav.templates'), icon: '📋' },
     { id: 'trends', label: t('nav.trendRadar'), icon: '⚡' },
-    { id: 'media', label: t('nav.media'), icon: '🖼️' },
   ];
 
   const screens: Record<ContentTab, ReactNode> = {
     sources: <SourcesScreen />,
     templates: <TemplatesScreen />,
     trends: <TrendsScreen />,
-    media: <MediaScreen />,
   };
 
   return (

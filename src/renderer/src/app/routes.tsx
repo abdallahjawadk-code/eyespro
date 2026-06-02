@@ -70,7 +70,7 @@ export function AppRoutes() {
         <Route path="ai-batch" element={<Navigate to="/articles" replace />} />
         <Route path="sources" element={<Navigate to="/content?tab=sources" replace />} />
         <Route path="templates" element={<Navigate to="/content?tab=templates" replace />} />
-        <Route path="media" element={<Navigate to="/content?tab=media" replace />} />
+        <Route path="media" element={<Navigate to="/content?tab=sources" replace />} />
         <Route path="trends" element={<Navigate to="/content?tab=trends" replace />} />
         <Route path="analytics" element={<Navigate to="/insights?tab=analytics" replace />} />
         <Route path="quality" element={<Navigate to="/insights?tab=quality" replace />} />
