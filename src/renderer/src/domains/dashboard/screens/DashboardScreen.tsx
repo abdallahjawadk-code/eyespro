@@ -21,7 +21,7 @@ type PipeStats = { pending: number; running: number; failed: number };
 type AuditRow = { id: number; ok: boolean; url?: string; duration_ms?: number; created_at?: string };
 
 export function DashboardScreen() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const navigate = useNavigate();
   const dashQuery = useAsyncData<Dash>(() => window.eyespro.analytics.dashboard() as unknown as Promise<ApiResult<Dash>>);
   const pipeQuery = useAsyncData<PipeStats>(() => window.eyespro.pipeline.queueStats());
@@ -90,10 +90,14 @@ export function DashboardScreen() {
           <span style={{ fontSize: 20 }}>{torActive ? '🛡️' : '🌐'}</span>
           <div>
             <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--t1)' }}>
-              {torActive ? 'نظام التخفي وتجاوز الحجب نشط (Tor Mode)' : 'نظام التخفي معطل حالياً (Direct Connection)'}
+              {torActive
+                ? t('dash.tor.onTitle', { defaultValue: 'Stealth & anti-blocking system active (Tor Mode)' })
+                : t('dash.tor.offTitle', { defaultValue: 'Stealth mode is currently off (Direct Connection)' })}
             </div>
             <div style={{ fontSize: 11, color: 'var(--t3)', marginTop: 2 }}>
-              {torActive ? 'يتم تمرير كافة اتصالات جلب المحتوى والمنافسين وتنزيل الفيديوهات عبر شبكة Tor لحماية هويتك الرقمية.' : 'تتصل الخدمات بالإنترنت مباشرة دون تشفير هويتك عبر Tor. يمكنك تفعيله من الإعدادات.'}
+              {torActive
+                ? t('dash.tor.onDesc', { defaultValue: 'All content/competitor fetching and video downloads are routed through the Tor network to protect your digital identity.' })
+                : t('dash.tor.offDesc', { defaultValue: 'Services connect to the internet directly without masking your identity via Tor. You can enable it in Settings.' })}
             </div>
           </div>
         </div>
@@ -102,7 +106,7 @@ export function DashboardScreen() {
             fontSize: 10, fontWeight: 700, color: 'var(--ok)',
             background: 'rgba(34, 197, 94, 0.1)', padding: '3px 8px', borderRadius: 20
           }}>
-            مؤمن ومحمي
+            {t('dash.tor.secured', { defaultValue: 'Secured & protected' })}
           </span>
         )}
       </div>
@@ -112,12 +116,12 @@ export function DashboardScreen() {
         <Stat label={t('dash.stat.published')} value={dashQuery.data?.published ?? 0} accent="#22c55e" />
         <Stat label={t('dash.stat.today')} value={dashQuery.data?.today ?? 0} accent="var(--acc)" />
         <Stat label={t('dash.stat.sources')} value={dashQuery.data?.sources ?? 0} accent="#38bdf8" />
-        <Stat label={t('dash.pipe.pending', { defaultValue: 'خط المعالجة' })} value={pipeQuery.data?.pending ?? 0} accent="#f59e0b" />
-        <Stat label={t('dash.pipe.failed', { defaultValue: 'فشل' })} value={pipeQuery.data?.failed ?? 0} accent="#ef4444" />
+        <Stat label={t('dash.pipe.pending', { defaultValue: 'Processing queue' })} value={pipeQuery.data?.pending ?? 0} accent="#f59e0b" />
+        <Stat label={t('dash.pipe.failed', { defaultValue: 'Failed' })} value={pipeQuery.data?.failed ?? 0} accent="#ef4444" />
       </StatGrid>
 
       <p style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--t2)', margin: '0 0 10px' }}>
-        {t('dashboard.quickAccess', { defaultValue: 'وصول سريع' })}
+        {t('dashboard.quickAccess', { defaultValue: 'Quick access' })}
       </p>
       <div className="ui-hub-cards">
         {hubs.map((h) => (
@@ -137,15 +141,15 @@ export function DashboardScreen() {
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginTop: 20 }}>
         {/* Ingest Audit Log Drawer */}
-        <Card title="📊 سجل عمليات جلب المحتوى المباشر">
+        <Card title={`📊 ${t('dash.fetchLog.title', { defaultValue: 'Live content-fetch log' })}`}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             {latestAudit.length === 0 ? (
               <div style={{ fontSize: 12, color: 'var(--t3)', textAlign: 'center', padding: '20px 0' }}>
-                لا توجد عمليات جلب مسجلة حالياً.
+                {t('dash.fetchLog.empty', { defaultValue: 'No fetch operations recorded yet.' })}
               </div>
             ) : (
               latestAudit.map((log) => {
-                const dateStr = log.created_at ? new Date(log.created_at).toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit' }) : '—';
+                const dateStr = log.created_at ? new Date(log.created_at).toLocaleTimeString(i18n.language === 'ar' ? 'ar-SA' : 'en-GB', { hour: '2-digit', minute: '2-digit' }) : '—';
                 return (
                   <div key={log.id} style={{
                     display: 'flex', alignItems: 'center', justifyContent: 'space-between',
@@ -158,10 +162,10 @@ export function DashboardScreen() {
                         background: log.ok ? 'rgba(16, 185, 129, 0.1)' : 'rgba(239, 68, 68, 0.1)',
                         padding: '1px 5px', borderRadius: 4, fontSize: 10, fontWeight: 700, flexShrink: 0
                       }}>
-                        {log.ok ? 'ناجح' : 'فشل'}
+                        {log.ok ? t('common.success', { defaultValue: 'Success' }) : t('common.failed', { defaultValue: 'Failed' })}
                       </span>
                       <span style={{ fontSize: 11, color: 'var(--t1)', textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }} title={log.url}>
-                        {log.url ? log.url.split('/')[2] : 'مجهول'}
+                        {log.url ? log.url.split('/')[2] : t('common.unknown', { defaultValue: 'Unknown' })}
                       </span>
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0, fontSize: 10, color: 'var(--t3)' }}>
@@ -176,7 +180,7 @@ export function DashboardScreen() {
         </Card>
 
         {/* Fetch Success Rate Gauge Card */}
-        <Card title="📈 كفاءة جلب البيانات ومعدل النجاح">
+        <Card title={`📈 ${t('dash.successRate.title', { defaultValue: 'Fetch efficiency & success rate' })}`}>
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '16px 0', gap: 14 }}>
             <div style={{ position: 'relative', width: 90, height: 90 }}>
               <svg width="90" height="90" viewBox="0 0 90 90" style={{ transform: 'rotate(-90deg)' }}>
@@ -194,11 +198,13 @@ export function DashboardScreen() {
                 alignItems: 'center', justifyContent: 'center'
               }}>
                 <span style={{ fontSize: 18, fontWeight: 700, color: 'var(--t1)' }}>{successRate}%</span>
-                <span style={{ fontSize: 9, color: 'var(--t3)', marginTop: 2 }}>معدل النجاح</span>
+                <span style={{ fontSize: 9, color: 'var(--t3)', marginTop: 2 }}>{t('dash.successRate.label', { defaultValue: 'Success rate' })}</span>
               </div>
             </div>
             <div style={{ fontSize: 12, color: 'var(--t2)', textAlign: 'center', lineHeight: 1.6, maxWidth: 220 }}>
-              {successRate >= 80 ? '✓ يعمل المحرك بكفاءة ممتازة ومستقرة، تم تجاوز الحجوبات بنجاح.' : '⚠️ تم رصد بعض الأخطاء أو حجب الطلبات من قبل مواقع الطرف الثالث.'}
+              {successRate >= 80
+                ? t('dash.successRate.good', { defaultValue: '✓ The engine is running smoothly and reliably; blocks were bypassed successfully.' })
+                : t('dash.successRate.warn', { defaultValue: '⚠️ Some errors or blocked requests were detected from third-party sites.' })}
             </div>
           </div>
         </Card>

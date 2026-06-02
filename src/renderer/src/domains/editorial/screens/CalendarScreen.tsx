@@ -46,9 +46,9 @@ export function CalendarScreen() {
       });
       if (r.ok) {
         const count = (r.data as { count: number })?.count ?? ids.length;
-        setMsg(t('download.success', { count, defaultValue: `✓ تم تحميل ${count} مقال` }));
+        setMsg(t('download.success', { count, defaultValue: `✓ Downloaded ${count} articles` }));
       } else if (r.error !== 'cancelled') {
-        setMsg(r.error ?? t('download.failed', { defaultValue: 'فشل التحميل' }));
+        setMsg(r.error ?? t('download.failed', { defaultValue: 'Download failed' }));
       }
     } finally {
       setDownloading(false);
@@ -62,53 +62,53 @@ export function CalendarScreen() {
       </Toolbar>
 
       <div className="ui-grid ui-grid--2">
-        <Card title={t('download.filterTitle', { defaultValue: 'تصفية وتحميل' })}>
+        <Card title={t('download.filterTitle', { defaultValue: 'Filter & download' })}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
 
             <div>
               <label style={{ fontSize: 12, fontWeight: 600, display: 'block', marginBottom: 4 }}>
-                {t('articles.colStatus', { defaultValue: 'الحالة' })}
+                {t('articles.colStatus', { defaultValue: 'Status' })}
               </label>
               <select
                 value={statusFilter}
                 onChange={(e) => setStatusFilter(e.target.value)}
                 style={{ width: '100%', padding: '6px 10px', borderRadius: 6, fontSize: 13, border: '1px solid var(--border)' }}
               >
-                <option value="all">{t('common.all', { defaultValue: 'الكل' })}</option>
-                <option value="draft">{t('articles.statusDraft', { defaultValue: 'مسودة' })}</option>
-                <option value="pending">{t('articles.statusPending', { defaultValue: 'معلق' })}</option>
-                <option value="published">{t('articles.statusPublished', { defaultValue: 'منشور' })}</option>
-                <option value="archived">{t('articles.statusArchived', { defaultValue: 'مؤرشف' })}</option>
+                <option value="all">{t('common.all', { defaultValue: 'All' })}</option>
+                <option value="draft">{t('articles.statusDraft', { defaultValue: 'Draft' })}</option>
+                <option value="pending">{t('articles.statusPending', { defaultValue: 'Pending' })}</option>
+                <option value="published">{t('articles.statusPublished', { defaultValue: 'Published' })}</option>
+                <option value="archived">{t('articles.statusArchived', { defaultValue: 'Archived' })}</option>
               </select>
             </div>
 
             <div>
               <label style={{ fontSize: 12, fontWeight: 600, display: 'block', marginBottom: 4 }}>
-                {t('articles.colCategory', { defaultValue: 'الفئة' })}
+                {t('articles.colCategory', { defaultValue: 'Category' })}
               </label>
               <select
                 value={categoryFilter}
                 onChange={(e) => setCategoryFilter(e.target.value)}
                 style={{ width: '100%', padding: '6px 10px', borderRadius: 6, fontSize: 13, border: '1px solid var(--border)' }}
               >
-                <option value="all">{t('common.all', { defaultValue: 'الكل' })}</option>
+                <option value="all">{t('common.all', { defaultValue: 'All' })}</option>
                 {categories.map((c) => <option key={c} value={c}>{c}</option>)}
               </select>
             </div>
 
             <div>
               <label style={{ fontSize: 12, fontWeight: 600, display: 'block', marginBottom: 4 }}>
-                {t('download.groupByLabel', { defaultValue: 'ترتيب المقالات في الملف حسب:' })}
+                {t('download.groupByLabel', { defaultValue: 'Order articles in the file by:' })}
               </label>
               <select
                 value={groupBy}
                 onChange={(e) => setGroupBy(e.target.value as GroupBy)}
                 style={{ width: '100%', padding: '6px 10px', borderRadius: 6, fontSize: 13, border: '1px solid var(--border)' }}
               >
-                <option value="source">{t('download.groupBySource', { defaultValue: 'المصدر' })}</option>
-                <option value="category">{t('download.groupByCategory', { defaultValue: 'الفئة' })}</option>
-                <option value="status">{t('download.groupByStatus', { defaultValue: 'الحالة' })}</option>
-                <option value="none">{t('download.groupByNone', { defaultValue: 'بدون تجميع' })}</option>
+                <option value="source">{t('download.groupBySource', { defaultValue: 'Source' })}</option>
+                <option value="category">{t('download.groupByCategory', { defaultValue: 'Category' })}</option>
+                <option value="status">{t('download.groupByStatus', { defaultValue: 'Status' })}</option>
+                <option value="none">{t('download.groupByNone', { defaultValue: 'No grouping' })}</option>
               </select>
             </div>
 
@@ -124,21 +124,21 @@ export function CalendarScreen() {
               onClick={() => void download()}
             >
               {downloading
-                ? t('common.loading', { defaultValue: 'جاري التحميل…' })
-                : `⬇ ${t('download.downloadBtn', { defaultValue: 'تحميل' })} ${articles.length} ${t('download.articles', { defaultValue: 'مقال' })}`}
+                ? t('common.loading', { defaultValue: 'Loading…' })
+                : `⬇ ${t('download.downloadBtn', { defaultValue: 'Download' })} ${articles.length} ${t('download.articles', { defaultValue: 'articles' })}`}
             </Btn>
           </div>
         </Card>
 
-        <Card title={t('download.previewTitle', { defaultValue: 'المقالات المختارة' })}>
+        <Card title={t('download.previewTitle', { defaultValue: 'Selected articles' })}>
           {loading ? (
             <Loading />
           ) : articles.length === 0 ? (
-            <Empty title={t('articles.empty', { defaultValue: 'لا توجد مقالات' })} icon="📄" />
+            <Empty title={t('articles.empty', { defaultValue: 'No articles' })} icon="📄" />
           ) : (
             <div style={{ maxHeight: 400, overflowY: 'auto' }}>
               <p style={{ fontSize: 11, color: 'var(--t3)', marginBottom: 8 }}>
-                {articles.length} {t('download.articles', { defaultValue: 'مقال' })}
+                {articles.length} {t('download.articles', { defaultValue: 'articles' })}
               </p>
               {articles.slice(0, 30).map((a) => (
                 <div key={a.id} style={{ padding: '6px 0', borderBottom: '1px solid var(--border)', fontSize: 13 }}>
@@ -150,7 +150,7 @@ export function CalendarScreen() {
               ))}
               {articles.length > 30 && (
                 <p style={{ fontSize: 11, color: 'var(--t3)', marginTop: 8 }}>
-                  +{articles.length - 30} {t('download.more', { defaultValue: 'أخرى…' })}
+                  +{articles.length - 30} {t('download.more', { defaultValue: 'more…' })}
                 </p>
               )}
             </div>
@@ -163,9 +163,9 @@ export function CalendarScreen() {
 
 function buildTitle(status: string, category: string, groupBy: GroupBy): string {
   const parts: string[] = [];
-  if (status !== 'all') parts.push(status === 'published' ? 'منشور' : status === 'pending' ? 'معلق' : status === 'draft' ? 'مسودة' : status);
+  if (status !== 'all') parts.push(status === 'published' ? 'Published' : status === 'pending' ? 'Pending' : status === 'draft' ? 'Draft' : status);
   if (category !== 'all') parts.push(category);
-  const base = parts.length ? parts.join(' — ') : 'جميع المقالات';
-  const g = groupBy === 'source' ? 'مجمّع بالمصدر' : groupBy === 'category' ? 'مجمّع بالفئة' : groupBy === 'status' ? 'مجمّع بالحالة' : '';
+  const base = parts.length ? parts.join(' — ') : 'All articles';
+  const g = groupBy === 'source' ? 'Grouped by source' : groupBy === 'category' ? 'Grouped by category' : groupBy === 'status' ? 'Grouped by status' : '';
   return g ? `${base} (${g})` : base;
 }

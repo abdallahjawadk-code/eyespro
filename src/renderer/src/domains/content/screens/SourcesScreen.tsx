@@ -475,10 +475,10 @@ export function SourcesScreen() {
         width: 'fit-content'
       }}>
         {[
-          { key: 'all', label: t('sources.tabs.all', { defaultValue: 'الكل' }) },
-          { key: 'active', label: t('sources.tabs.active', { defaultValue: 'النشطة' }) },
-          { key: 'disabled', label: t('sources.tabs.disabled', { defaultValue: 'المعطلة' }) },
-          { key: 'errors', label: t('sources.tabs.errors', { defaultValue: 'بها أخطاء' }) },
+          { key: 'all', label: t('sources.tabs.all', { defaultValue: 'All' }) },
+          { key: 'active', label: t('sources.tabs.active', { defaultValue: 'Active' }) },
+          { key: 'disabled', label: t('sources.tabs.disabled', { defaultValue: 'Disabled' }) },
+          { key: 'errors', label: t('sources.tabs.errors', { defaultValue: 'With errors' }) },
         ].map(tInfo => {
           const isActive = activeTab === tInfo.key;
           return (
@@ -512,7 +512,7 @@ export function SourcesScreen() {
         marginBottom: 16
       }}>
         {[
-          { key: 'all', label: t('sources.platform.all', { defaultValue: 'كل المنصات' }), icon: '🌍', color: 'var(--t3)' },
+          { key: 'all', label: t('sources.platform.all', { defaultValue: 'All platforms' }), icon: '🌍', color: 'var(--t3)' },
           { key: 'rss', label: 'RSS', icon: '📡', color: '#f59e0b' },
           { key: 'wordpress', label: 'WordPress', icon: '🌐', color: '#21759b' },
           { key: 'telegram', label: 'Telegram', icon: '✈️', color: '#229ed9' },
