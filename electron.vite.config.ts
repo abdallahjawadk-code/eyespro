@@ -37,11 +37,21 @@ export default defineConfig({
           index: resolve(__dirname, 'src/renderer/index.html')
         },
         output: {
-          format: 'iife',
-          inlineDynamicImports: true,
+          // ES output (not iife) so the renderer can code-split: the React.lazy()
+          // route domains become separate chunks loaded on navigation instead of
+          // being inlined into one ~3MB bundle. base is already './' (relative) so
+          // chunks resolve under file:// / asar. protect-renderer.cjs obfuscates
+          // every emitted .js, so all chunks stay protected.
+          format: 'es',
           entryFileNames: 'assets/[name]-[hash].js',
           chunkFileNames: 'assets/[name]-[hash].js',
-          assetFileNames: 'assets/[name]-[hash][extname]'
+          assetFileNames: 'assets/[name]-[hash][extname]',
+          manualChunks(id: string) {
+            if (!id.includes('node_modules')) return undefined;
+            if (id.includes('@tiptap') || id.includes('prosemirror')) return 'editor';
+            if (/[\\/]react(-dom|-router|-router-dom)?[\\/]/.test(id) || id.includes('scheduler')) return 'react-vendor';
+            return 'vendor';
+          }
         }
       }
     }
