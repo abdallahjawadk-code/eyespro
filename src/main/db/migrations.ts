@@ -1238,4 +1238,13 @@ export function runMigrations(db: Database.Database): void {
       CREATE INDEX IF NOT EXISTS idx_crawler_visited ON crawler_visited_urls(monitor_id, url);
     `);
   });
+
+  // v50 — keyword_alerts schema fix. The table was created with `active` and no
+  // tenant column, but keyword-alerts.ts inserts/updates/filters on `enabled` and
+  // `tenant_id`, so create/toggle/scan threw "no column named enabled" at runtime.
+  // Add the columns the service expects (the legacy `active` column stays, unused).
+  migrateTo(db, 50, () => {
+    ensureCol(db, 'keyword_alerts', 'enabled', 'INTEGER NOT NULL DEFAULT 1');
+    ensureCol(db, 'keyword_alerts', 'tenant_id', 'INTEGER');
+  });
 }
