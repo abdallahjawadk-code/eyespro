@@ -110,6 +110,7 @@ app.whenReady().then(() => {
   // most. Delayed so it never competes with startup; the bundled build works meanwhile.
   setTimeout(() => {
     void import('./services/media-tools').then((m) => m.maybeAutoUpdateMediaTools()).catch(() => { /* ignore */ });
+    void import('./services/whisper-manager').then((m) => m.maybeAutoUpdateWhisper()).catch(() => { /* ignore */ });
   }, 20_000);
 
   app.on('activate', () => {

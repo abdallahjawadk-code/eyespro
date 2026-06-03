@@ -309,6 +309,9 @@ const CHANNEL_PERMS: Record<string, Perm> = {
   'downloader:trim': 'write',
   'assistant:command': 'write',
   'assistant:suggest': 'read',
+  'assistant:transcribe': 'write',
+  'whisper:status': 'read',
+  'whisper:update': 'admin',
   'downloader:resize': 'write',
   'downloader:watermark': 'write',
 };

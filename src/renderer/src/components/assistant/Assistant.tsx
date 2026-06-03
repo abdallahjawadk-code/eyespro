@@ -6,17 +6,7 @@ import './assistant.css';
 
 type RobotState = 'idle' | 'thinking' | 'executing' | 'done' | 'error';
 
-/** Minimal Web Speech API shape (avoids `any`; not in default TS lib). */
-interface SpeechRec {
-  lang: string; interimResults: boolean; maxAlternatives: number;
-  start: () => void; stop: () => void;
-  onresult: ((e: { results: ArrayLike<ArrayLike<{ transcript: string }>> }) => void) | null;
-  onend: (() => void) | null; onerror: (() => void) | null; onstart: (() => void) | null;
-}
-function getSpeechRecognition(): (new () => SpeechRec) | null {
-  const w = window as unknown as { SpeechRecognition?: new () => SpeechRec; webkitSpeechRecognition?: new () => SpeechRec };
-  return w.SpeechRecognition ?? w.webkitSpeechRecognition ?? null;
-}
+const micSupported = typeof navigator !== 'undefined' && !!navigator.mediaDevices?.getUserMedia && typeof MediaRecorder !== 'undefined';
 
 interface Msg {
   who: 'user' | 'bot';
@@ -58,8 +48,10 @@ export function Assistant() {
     { who: 'bot', text: t('assistant.greeting', { defaultValue: 'مرحباً! أنا مساعدك الذكي. اكتب ما تريد تنفيذه.' }) },
   ]);
   const bodyRef = useRef<HTMLDivElement>(null);
-  const recogRef = useRef<SpeechRec | null>(null);
-  const sttAvailable = typeof window !== 'undefined' && getSpeechRecognition() !== null;
+  const recorderRef = useRef<MediaRecorder | null>(null);
+  const streamRef = useRef<MediaStream | null>(null);
+  const chunksRef = useRef<Blob[]>([]);
+  const sttAvailable = micSupported;
 
   // ── voice output (TTS) ──
   function speak(text: string) {
@@ -76,26 +68,45 @@ export function Assistant() {
     } catch { /* ignore */ }
   }
 
-  // ── voice input (STT) ──
-  function startListening() {
-    const SR = getSpeechRecognition();
-    if (!SR || busy) return;
-    const recog = new SR();
-    recog.lang = i18n.language === 'en' ? 'en-US' : 'ar-SA';
-    recog.interimResults = false;
-    recog.maxAlternatives = 1;
-    recog.onstart = () => setListening(true);
-    recog.onerror = () => setListening(false);
-    recog.onend = () => setListening(false);
-    recog.onresult = (e) => {
+  // ── voice input (STT): record mic → Whisper (cloud via provider or local) ──
+  async function startListening() {
+    if (busy || listening) return;
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      streamRef.current = stream;
+      chunksRef.current = [];
+      const rec = new MediaRecorder(stream);
+      rec.ondataavailable = (e) => { if (e.data.size) chunksRef.current.push(e.data); };
+      rec.onstop = async () => {
+        stream.getTracks().forEach((t) => t.stop());
+        streamRef.current = null;
+        setListening(false);
+        const blob = new Blob(chunksRef.current, { type: rec.mimeType || 'audio/webm' });
+        if (blob.size < 800) return; // too short / silence
+        setBusy(true); setState('thinking');
+        try {
+          const ab = await blob.arrayBuffer();
+          const r = await window.eyespro.assistant.transcribe(ab, blob.type, i18n.language === 'en' ? 'en' : 'ar');
+          const text = r.ok && r.data?.ok ? (r.data.text ?? '').trim() : '';
+          setBusy(false);
+          if (text) { setSuggestions([]); void send(text); }
+          else {
+            setState('error'); setTimeout(() => setState('idle'), 1500);
+            setMsgs((m) => [...m, { who: 'bot', text: (r.ok ? r.data?.error : r.error) || 'لم ألتقط كلاماً واضحاً.', err: true }]);
+          }
+        } catch { setBusy(false); setState('idle'); }
+      };
+      recorderRef.current = rec;
+      rec.start();
+      setListening(true);
+      // safety auto-stop after 12s
+      setTimeout(() => { if (recorderRef.current?.state === 'recording') recorderRef.current.stop(); }, 12_000);
+    } catch {
       setListening(false);
-      const transcript = e.results[0]?.[0]?.transcript ?? '';
-      if (transcript.trim()) { setSuggestions([]); void send(transcript.trim()); }
-    };
-    recogRef.current = recog;
-    try { recog.start(); } catch { /* ignore */ }
+      setMsgs((m) => [...m, { who: 'bot', text: 'تعذّر الوصول للميكروفون — تحقّق من إذن الميكروفون.', err: true }]);
+    }
   }
-  function stopListening() { try { recogRef.current?.stop(); } catch { /* ignore */ } setListening(false); }
+  function stopListening() { try { recorderRef.current?.stop(); } catch { /* ignore */ } }
 
   useEffect(() => { bodyRef.current?.scrollTo({ top: bodyRef.current.scrollHeight, behavior: 'smooth' }); }, [msgs, state, suggestions]);
 
@@ -232,7 +243,7 @@ export function Assistant() {
               <button
                 className={`asst-icon-btn mic${listening ? ' listening' : ''}`}
                 title={t('assistant.speak', { defaultValue: 'تكلّم' })}
-                onClick={() => (listening ? stopListening() : startListening())}
+                onClick={() => { if (listening) stopListening(); else void startListening(); }}
                 disabled={busy}
               >
                 🎙️

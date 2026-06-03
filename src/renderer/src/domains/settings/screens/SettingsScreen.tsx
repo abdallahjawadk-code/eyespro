@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { useLocation } from 'react-router-dom';
 import { AiProvidersPanel } from '../components/AiProvidersPanel';
 import { OllamaEmbeddedPanel } from '../components/OllamaEmbeddedPanel';
+import { VoicePanel } from '../components/VoicePanel';
 import { BackupPanel } from '../components/BackupPanel';
 import { UpdatePanel } from '../components/UpdatePanel';
 import { useAiSettings } from '../hooks/useAiSettings';
@@ -155,6 +156,7 @@ export function SettingsScreen() {
                   <OllamaEmbeddedPanel />
                 </Card>
               </div>
+              <div style={{ marginTop: 16 }}><VoicePanel /></div>
             </>
           )}
           {tab === 'privacy' && (

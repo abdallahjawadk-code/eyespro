@@ -709,6 +709,29 @@ export function registerAdvancedHandlers(ipcMain: IpcMain, getWin: () => Browser
     } catch (e) { return { ok: false, error: (e as Error).message }; }
   });
 
+  // Voice input → text (cloud via user's provider, or local whisper.cpp).
+  ipcMain.handle('assistant:transcribe', async (_e, audio: ArrayBuffer, mime?: string, lang?: string) => {
+    try {
+      const { transcribeVoice } = await import('../services/voice-stt');
+      const buf = Buffer.from(new Uint8Array(audio));
+      return ok(await transcribeVoice(buf, String(mime || 'audio/webm'), lang === 'en' ? 'en' : 'ar'));
+    } catch (e) { return { ok: false, error: (e as Error).message }; }
+  });
+
+  // Local Whisper engine management (auto-download + self-update).
+  ipcMain.handle('whisper:status', async () => {
+    try { const { getWhisperInfo } = await import('../services/whisper-manager'); return ok(getWhisperInfo()); }
+    catch (e) { return { ok: false, error: (e as Error).message }; }
+  });
+  ipcMain.handle('whisper:update', async () => {
+    try {
+      const { setSetting } = await import('../services/settings');
+      setSetting('stt_whisper_local', '1');
+      const { updateWhisper } = await import('../services/whisper-manager');
+      return ok(await updateWhisper());
+    } catch (e) { return { ok: false, error: (e as Error).message }; }
+  });
+
   ipcMain.handle('downloader:delete', async (_e, filePath: string) => {
     try {
       const fs = await import('node:fs/promises');

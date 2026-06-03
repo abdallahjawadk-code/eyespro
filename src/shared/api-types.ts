@@ -219,6 +219,8 @@ export interface AssistantResult {
 
 export interface AssistantSuggestion { text: string; command?: string }
 export interface AssistantSuggestions { greeting: string; suggestions: AssistantSuggestion[] }
+export interface SttResult { ok: boolean; text?: string; engine?: 'local' | 'cloud'; error?: string }
+export interface WhisperInfo { binary: string | null; model: string | null; ready: boolean }
 
 export interface UpdaterStatus {
   currentVersion: string;
@@ -887,6 +889,11 @@ export interface EyesProApi {
   assistant: {
     command: (command: string, confirmed?: boolean) => Inv<AssistantResult>;
     suggest: () => Inv<AssistantSuggestions>;
+    transcribe: (audio: ArrayBuffer, mime?: string, lang?: string) => Inv<SttResult>;
+  };
+  whisper: {
+    status: () => Inv<WhisperInfo>;
+    update: () => Inv<{ ok: boolean; error?: string }>;
   };
   app: { copyright: () => string };
   translation: {

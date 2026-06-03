@@ -347,7 +347,12 @@ const api: EyesProApi = {
   },
   assistant: {
     command: (command: string, confirmed?: boolean) => invoke('assistant:command', command, confirmed),
-    suggest: () => invoke('assistant:suggest')
+    suggest: () => invoke('assistant:suggest'),
+    transcribe: (audio: ArrayBuffer, mime?: string, lang?: string) => invoke('assistant:transcribe', audio, mime, lang)
+  },
+  whisper: {
+    status: () => invoke('whisper:status'),
+    update: () => invoke('whisper:update')
   },
   translation: {
     text: (text: string, targetLang: string, backend?: string) => invoke('translation:text', text, targetLang, backend),
