@@ -3,10 +3,11 @@ import { useTranslation } from 'react-i18next';
 import { useLocation } from 'react-router-dom';
 import { AiProvidersPanel } from '../components/AiProvidersPanel';
 import { OllamaEmbeddedPanel } from '../components/OllamaEmbeddedPanel';
+import { BackupPanel } from '../components/BackupPanel';
 import { useAiSettings } from '../hooks/useAiSettings';
 import { Btn, Card, Field, Input, Msg, Panel } from '../../../ui';
 
-type SettingsTab = 'general' | 'ai' | 'privacy' | 'about';
+type SettingsTab = 'general' | 'ai' | 'privacy' | 'backup' | 'about';
 
 type TorStatus = {
   enabled?: boolean;
@@ -51,7 +52,7 @@ export function SettingsScreen() {
 
   useEffect(() => {
     const st = (location.state as { tab?: string } | null)?.tab;
-    if (st === 'ai' || st === 'general' || st === 'privacy' || st === 'about') setTab(st as SettingsTab);
+    if (st === 'ai' || st === 'general' || st === 'privacy' || st === 'backup' || st === 'about') setTab(st as SettingsTab);
   }, [location.state]);
 
   async function save(key: string, value: string) {
@@ -65,6 +66,7 @@ export function SettingsScreen() {
     { id: 'general', label: t('settings.general'), icon: '⚙️' },
     { id: 'privacy', label: t('settings.groupPrivacy', { defaultValue: 'Privacy & security' }), icon: '🛡️' },
     { id: 'ai', label: t('settings.groupAi'), icon: '🤖' },
+    { id: 'backup', label: t('backup.tab', { defaultValue: 'Backup' }), icon: '💾' },
     { id: 'about', label: t('settings.about'), icon: 'ℹ️' },
   ];
 
@@ -259,6 +261,7 @@ export function SettingsScreen() {
               </div>
             </Card>
           )}
+          {tab === 'backup' && <BackupPanel />}
           {tab === 'about' && (
             <Card title={t('settings.about')}>
               <p style={{ margin: 0, fontSize: 14, lineHeight: 1.6, color: 'var(--t2)' }}>

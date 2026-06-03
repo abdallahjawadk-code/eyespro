@@ -206,6 +206,14 @@ export interface BackupInfo {
   createdAt: string;
 }
 
+export interface BackupStatus {
+  autoEnabled: boolean;
+  lastBackupAt: string | null;
+  count: number;
+  dir: string;
+  totalSize: number;
+}
+
 export interface RolePermission {
   role: string;
   platform: string;
@@ -754,7 +762,13 @@ export interface EyesProApi {
   backup: {
     create: () => Inv<BackupInfo>;
     list: () => Inv<BackupInfo[]>;
-    restore: (filePath: string) => Inv<void>;
+    status: () => Inv<BackupStatus>;
+    restore: (filePath: string, passphrase?: string) => Inv<{ restarting: boolean }>;
+    export: (passphrase?: string) => Inv<BackupInfo | { canceled: boolean }>;
+    import: (passphrase?: string) => Inv<{ restarting: boolean } | { canceled: boolean }>;
+    openFolder: () => Inv<void>;
+    setAuto: (enabled: boolean) => Inv<BackupStatus>;
+    prune: (keep?: number) => Inv<BackupInfo[]>;
   };
   settings: {
     get: (key: string) => Inv<string | null>;

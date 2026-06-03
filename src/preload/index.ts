@@ -247,7 +247,13 @@ const api: EyesProApi = {
   backup: {
     create: () => invoke('backup:create'),
     list: () => invoke('backup:list'),
-    restore: (filePath) => invoke('backup:restore', filePath)
+    status: () => invoke('backup:status'),
+    restore: (filePath, passphrase) => invoke('backup:restore', filePath, passphrase),
+    export: (passphrase) => invoke('backup:export', passphrase),
+    import: (passphrase) => invoke('backup:import', passphrase),
+    openFolder: () => invoke('backup:openFolder'),
+    setAuto: (enabled) => invoke('backup:setAuto', enabled),
+    prune: (keep) => invoke('backup:prune', keep)
   },
   settings: {
     get: (key) => invoke('settings:get', key),

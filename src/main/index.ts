@@ -4,7 +4,7 @@ import { createLogger } from './logger';
 import { initDatabase, shutdownDatabase } from './db/database';
 import { registerIpcHandlers } from './ipc/register-handlers';
 import { createMainWindow } from './window';
-import { scheduleDailyBackups } from './services/backup';
+import { scheduleDailyBackups, applyPendingRestoreIfAny } from './services/backup';
 import { startScheduler } from './services/scheduler';
 import { processPendingJobs } from './services/ai';
 import { runAlertCheck } from './services/analytics';
@@ -84,6 +84,7 @@ app.whenReady().then(() => {
     }
   });
 
+  applyPendingRestoreIfAny();
   initDatabase();
   getDb().prepare("UPDATE pipeline_jobs SET status='pending' WHERE status='running'").run();
   getDb().prepare("UPDATE job_queue SET status='pending' WHERE status='running'").run();

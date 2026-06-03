@@ -1,4 +1,4 @@
-import { BrowserWindow, clipboard, dialog, shell, type IpcMain, type OpenDialogOptions } from 'electron';
+import { app, BrowserWindow, clipboard, dialog, shell, type IpcMain, type OpenDialogOptions } from 'electron';
 import { login, logout, getSession } from '../auth/auth-service';
 import { setup2fa, enable2fa, disable2fa, get2faStatus } from '../auth/totp-service';
 import { bindSession, getSessionFromEvent, getSessionToken, pruneExpiredSessions, savePersistedToken, loadPersistedToken, clearPersistedToken } from '../auth/session-store';
@@ -23,7 +23,7 @@ import * as permissions from '../services/permissions';
 import { listAudit } from '../services/audit';
 import { getAllSettings, setSetting, getSetting } from '../services/settings';
 import { importFromLegacyDb, guessLegacyPaths } from '../services/legacy-import';
-import { createEncryptedBackup, listBackups, restoreFromBackup } from '../services/backup';
+import { createEncryptedBackup, listBackups, restoreFromBackup, exportBackupTo, backupStatus, pruneBackups } from '../services/backup';
 import { getBackupDir } from '../db/paths';
 import path from 'node:path';
 import { cacheStats, systemPerf } from '../services/system';
@@ -46,6 +46,16 @@ import * as ollamaMgr from '../services/ollama-manager';
 
 function ok<T>(data: T): ApiResult<T> {
   return { ok: true, data };
+}
+
+/** Relaunch the app after a short delay so the renderer can show a "restarting" message.
+ *  app.exit() skips before-quit/will-quit, so the live DB flush won't overwrite the
+ *  store — the staged restore is applied cleanly on the next launch. */
+function relaunchSoon(): void {
+  setTimeout(() => {
+    try { app.relaunch(); } catch { /* ignore */ }
+    app.exit(0);
+  }, 700);
 }
 
 function isAllowedShareHost(hostname: string): boolean {
@@ -597,25 +607,77 @@ export function registerIpcHandlers(ipcMain: IpcMain, getWin: () => BrowserWindo
   ipcMain.handle('backup:create', async () => {
     try {
       const b = await createEncryptedBackup('manual');
-      return ok({ name: b.name, path: b.path, size: b.size, createdAt: new Date().toISOString() });
+      return ok(b);
     } catch (e) {
       return { ok: false, error: (e as Error).message };
     }
   });
   ipcMain.handle('backup:list', () => ok(listBackups()));
-  ipcMain.handle('backup:restore', (_e, filePath: string) => {
+  ipcMain.handle('backup:status', () => ok(backupStatus()));
+
+  // Restore from a backup that lives in the managed backups folder (path-traversal guarded).
+  ipcMain.handle('backup:restore', (_e, filePath: string, passphrase?: string) => {
     try {
       const safe = path.resolve(String(filePath));
       const backupDir = path.resolve(getBackupDir());
-      // Prevent path traversal — file must be inside the backup directory
       if (!safe.startsWith(backupDir + path.sep) && safe !== backupDir) {
         return { ok: false, error: 'مسار الملف غير مسموح به' };
       }
-      restoreFromBackup(safe);
-      return ok(undefined);
+      restoreFromBackup(safe, passphrase || undefined);
+      relaunchSoon();
+      return ok({ restarting: true });
     } catch (e) {
       return { ok: false, error: (e as Error).message };
     }
+  });
+
+  // Export a portable backup to a user-chosen location (optional passphrase = portable to any PC).
+  ipcMain.handle('backup:export', async (_e, passphrase?: string) => {
+    try {
+      const def = `eyespro-backup-${new Date().toISOString().slice(0, 10)}.epbak`;
+      const res = await dialog.showSaveDialog({
+        title: 'تصدير نسخة احتياطية',
+        defaultPath: def,
+        filters: [{ name: 'EyesPro Backup', extensions: ['epbak'] }],
+      });
+      if (res.canceled || !res.filePath) return ok({ canceled: true });
+      const b = await exportBackupTo(res.filePath, passphrase || undefined);
+      return ok(b);
+    } catch (e) {
+      return { ok: false, error: (e as Error).message };
+    }
+  });
+
+  // Import + restore a backup from anywhere (e.g. an external drive) — disaster recovery.
+  ipcMain.handle('backup:import', async (_e, passphrase?: string) => {
+    try {
+      const res = await dialog.showOpenDialog({
+        title: 'استيراد واستعادة نسخة احتياطية',
+        properties: ['openFile'],
+        filters: [{ name: 'EyesPro Backup', extensions: ['epbak'] }],
+      });
+      if (res.canceled || !res.filePaths[0]) return ok({ canceled: true });
+      restoreFromBackup(res.filePaths[0], passphrase || undefined);
+      relaunchSoon();
+      return ok({ restarting: true });
+    } catch (e) {
+      return { ok: false, error: (e as Error).message };
+    }
+  });
+
+  ipcMain.handle('backup:openFolder', () => {
+    try { void shell.openPath(getBackupDir()); return ok(undefined); }
+    catch (e) { return { ok: false, error: (e as Error).message }; }
+  });
+
+  ipcMain.handle('backup:setAuto', (_e, enabled: boolean) => {
+    try { setSetting('auto_backup_enabled', enabled ? '1' : '0'); return ok(backupStatus()); }
+    catch (e) { return { ok: false, error: (e as Error).message }; }
+  });
+
+  ipcMain.handle('backup:prune', (_e, keep?: number) => {
+    try { pruneBackups(typeof keep === 'number' ? keep : 14); return ok(listBackups()); }
+    catch (e) { return { ok: false, error: (e as Error).message }; }
   });
 
   ipcMain.handle('settings:get', (_e, key: string) => {
