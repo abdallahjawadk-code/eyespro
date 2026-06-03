@@ -76,7 +76,10 @@ export async function fetchTrendsForGeo(geo: string): Promise<{ ok: boolean; cou
   for (const url of candidates) {
     try {
       const { getText } = await import('../net/http');
-      const res = await getText(url, headers, { maxBytes: 2 * 1024 * 1024, useProxy: true });
+      // Trends are public Google data — fetch DIRECT (not via Tor): Tor exit nodes are
+      // blocked by Google and add huge latency. Tight timeout so a stuck candidate
+      // fails fast and we try the next.
+      const res = await getText(url, headers, { maxBytes: 2 * 1024 * 1024, useProxy: false, timeout: 10_000, retries: 1 });
 
       if (!res.ok) {
         lastError = `HTTP ${res.status} from ${url}`;
@@ -668,7 +671,8 @@ export async function fetchFromSource(sourceId: number): Promise<{ ok: boolean; 
 
   try {
     const { getText } = await import('../net/http');
-    const res = await getText(fetchUrl, headers, { maxBytes: 2 * 1024 * 1024, useProxy: true });
+    // Direct fetch, tight timeout, no retry — a slow/dead source shouldn't double the wait.
+    const res = await getText(fetchUrl, headers, { maxBytes: 2 * 1024 * 1024, useProxy: false, timeout: 10_000, retries: 0 });
 
     if (!res.ok) {
       const err = `HTTP ${res.status}`;
@@ -707,19 +711,22 @@ export async function fetchFromSource(sourceId: number): Promise<{ ok: boolean; 
       VALUES (?, ?, ?, ?, ?, 'pending')
     `);
 
+    // Full-content enrichment fetches a whole article page PER item — the dominant
+    // cost of a refresh. Cap it to the top few items and run those in PARALLEL instead
+    // of one-by-one; the rest keep their (fast) RSS description.
+    const MAX_ENRICH = 6;
+    const enriched = await Promise.all(
+      trends.map((_, i) =>
+        (i < MAX_ENRICH && itemLinkMap[i])
+          ? enrichTrendDescription(itemLinkMap[i]!).catch(() => null)
+          : Promise.resolve(null),
+      ),
+    );
+
     let inserted = 0;
     for (let i = 0; i < trends.length; i++) {
       const trend = trends[i]!;
-      let description = trend.description ?? null;
-
-      // Enrich description by fetching the article's full content
-      const articleLink = itemLinkMap[i];
-      if (articleLink) {
-        try {
-          const articleRes = await enrichTrendDescription(articleLink);
-          if (articleRes) description = articleRes;
-        } catch { /* keep RSS description */ }
-      }
+      const description = enriched[i] ?? trend.description ?? null;
 
       const r = insertTrend.run(
         sanitizeString(trend.title, 200),
@@ -748,10 +755,18 @@ export async function fetchAllSources(): Promise<{ total: number; failed: number
   let failed = 0;
   let inserted = 0;
 
-  for (const src of sources) {
-    const res = await fetchFromSource(src.id);
-    if (!res.ok) failed++;
-    else inserted += res.count;
+  // Fetch sources concurrently (bounded) instead of one-by-one — the serial loop made
+  // a full refresh take (sources × per-source latency), which stalled the newsroom.
+  const CONCURRENCY = 6;
+  for (let i = 0; i < sources.length; i += CONCURRENCY) {
+    const batch = sources.slice(i, i + CONCURRENCY);
+    const results = await Promise.all(
+      batch.map((src) => fetchFromSource(src.id).catch(() => ({ ok: false, count: 0 }))),
+    );
+    for (const res of results) {
+      if (!res.ok) failed++;
+      else inserted += res.count;
+    }
   }
 
   return { total: sources.length, failed, inserted };
