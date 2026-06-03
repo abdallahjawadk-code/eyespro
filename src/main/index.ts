@@ -19,6 +19,7 @@ import { processPipelineJobs } from './services/pipeline-jobs';
 import { initBuiltinOllamaOnStartup, shutdownBuiltinOllama } from './services/ollama-manager';
 import { realpathSync, existsSync } from 'node:fs';
 import { join, normalize } from 'node:path';
+import { pathToFileURL } from 'node:url';
 import { warmProxyPool } from './net/proxy-pool';
 import { startTor, stopTor } from './services/tor-manager';
 
@@ -73,10 +74,10 @@ app.whenReady().then(() => {
         return new Response('Forbidden', { status: 403 });
       }
 
-      const fileUrl = process.platform === 'win32'
-        ? `file:///${realFile.replace(/\\/g, '/')}`
-        : `file://${realFile}`;
-      return net.fetch(fileUrl);
+      // Use pathToFileURL so special characters in the filename (e.g. '#', '·', '｜',
+      // spaces) are properly percent-encoded. Building the file:// URL by hand left a
+      // raw '#' that net.fetch treated as a fragment, truncating the path → "Not found".
+      return net.fetch(pathToFileURL(realFile).href);
     } catch (e) {
       log.warn('eyesmedia error', { error: (e as Error).message });
       return new Response('Not found', { status: 404 });
