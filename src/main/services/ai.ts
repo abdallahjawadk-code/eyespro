@@ -182,7 +182,7 @@ async function callGemini(prompt: string, text: string, model?: string): Promise
     system_instruction: { parts: [{ text: SYSTEM_PROMPT }] },
     contents: [{ parts: [{ text: `${prompt}\n\n${text.slice(0, 12000)}` }] }],
     generationConfig: { temperature: 0.3, maxOutputTokens: 2048 }
-  }, {}, { timeout: 120_000, useProxy: true }); // 2 min · proxy/Tor if configured (bypass geo-blocks)
+  }, {}, { timeout: 120_000 }); // 2 min · DIRECT (no proxy/Tor — AI providers block proxy/datacenter IPs)
   if (!res.ok) throw new Error(res.body.slice(0, 300));
   const parsed = JSON.parse(res.body) as {
     candidates?: { content?: { parts?: { text?: string }[] } }[];
@@ -221,7 +221,7 @@ async function callOpenAI(prompt: string, text: string, model?: string): Promise
     ],
     max_tokens: 2048,
     temperature: 0.3
-  }, { Authorization: `Bearer ${key}` }, { timeout: 120_000, useProxy: true }); // 2 min · proxy/Tor if configured
+  }, { Authorization: `Bearer ${key}` }, { timeout: 120_000 }); // 2 min · DIRECT (AI providers block proxy/datacenter IPs)
   if (!res.ok) throw new Error(res.body.slice(0, 300));
   const parsed = JSON.parse(res.body) as { choices?: { message?: { content?: string } }[] };
   return parsed.choices?.[0]?.message?.content?.trim() ?? '';
@@ -239,7 +239,7 @@ async function callGroq(prompt: string, text: string, model?: string): Promise<s
     ],
     max_tokens: 2048,
     temperature: 0.3
-  }, { Authorization: `Bearer ${key}` }, { timeout: 60_000, useProxy: true }); // 1 min · proxy/Tor if configured (Groq geo-blocks some regions)
+  }, { Authorization: `Bearer ${key}` }, { timeout: 60_000 }); // 1 min · DIRECT (Groq's Cloudflare blocks proxy/datacenter IPs)
   if (!res.ok) throw new Error(res.body.slice(0, 300));
   const parsed = JSON.parse(res.body) as { choices?: { message?: { content?: string } }[] };
   return parsed.choices?.[0]?.message?.content?.trim() ?? '';
@@ -254,7 +254,7 @@ async function callAnthropic(prompt: string, text: string, model?: string): Prom
     max_tokens: 2048,
     system: SYSTEM_PROMPT,
     messages: [{ role: 'user', content: `${prompt}\n\n${text.slice(0, 12000)}` }]
-  }, { 'x-api-key': key, 'anthropic-version': '2023-06-01' }, { timeout: 120_000, useProxy: true }); // 2 min · proxy/Tor if configured
+  }, { 'x-api-key': key, 'anthropic-version': '2023-06-01' }, { timeout: 120_000 }); // 2 min · DIRECT (AI providers block proxy/datacenter IPs)
   if (!res.ok) throw new Error(res.body.slice(0, 300));
   const parsed = JSON.parse(res.body) as { content?: { text?: string }[] };
   return parsed.content?.[0]?.text?.trim() ?? '';
