@@ -68,20 +68,41 @@ export function generateReport(period: ReportPeriod): ReportData {
   return { period, from, to, totalArticles, publishedArticles, failedPublishes, topSources, topCategories, platformBreakdown };
 }
 
-export function generateReportHtml(period: ReportPeriod): string {
+export function generateReportHtml(period: ReportPeriod, lang: 'ar' | 'en' = 'ar'): string {
   const data = generateReport(period);
-  const title = period === 'weekly' ? 'التقرير الأسبوعي' : 'التقرير الشهري';
-  const fromDate = new Date(data.from).toLocaleDateString('ar-SA');
-  const toDate = new Date(data.to).toLocaleDateString('ar-SA');
+  const ar = lang !== 'en';
+
+  // Localized labels — the report follows the UI language chosen by the user.
+  const L = ar
+    ? {
+        title: period === 'weekly' ? 'التقرير الأسبوعي' : 'التقرير الشهري',
+        to: 'إلى', fetched: 'مقالات مجلوبة', success: 'نشر ناجح', failed: 'نشر فاشل',
+        topSources: 'أبرز المصادر', source: 'المصدر', articles: 'المقالات',
+        categories: 'التصنيفات', category: 'التصنيف',
+        platforms: 'المنصات', platform: 'المنصة', posts: 'المنشورات',
+      }
+    : {
+        title: period === 'weekly' ? 'Weekly Report' : 'Monthly Report',
+        to: 'to', fetched: 'Articles fetched', success: 'Published OK', failed: 'Failed publishes',
+        topSources: 'Top sources', source: 'Source', articles: 'Articles',
+        categories: 'Categories', category: 'Category',
+        platforms: 'Platforms', platform: 'Platform', posts: 'Posts',
+      };
+
+  const locale = ar ? 'ar-SA' : 'en-GB';
+  const dir = ar ? 'rtl' : 'ltr';
+  const align = ar ? 'right' : 'left';
+  const fromDate = new Date(data.from).toLocaleDateString(locale);
+  const toDate = new Date(data.to).toLocaleDateString(locale);
 
   const rows = (items: { name?: string; platform?: string; count: number }[]) =>
     items.map(i => `<tr><td>${i.name || i.platform || ''}</td><td>${i.count}</td></tr>`).join('');
 
   return `<!DOCTYPE html>
-<html dir="rtl" lang="ar">
+<html dir="${dir}" lang="${lang}">
 <head>
 <meta charset="UTF-8">
-<title>${title}</title>
+<title>${L.title}</title>
 <style>
   body { font-family: Arial, sans-serif; background: #0f172a; color: #e2e8f0; padding: 32px; }
   h1 { color: #a78bfa; } h2 { color: #7c3aed; border-bottom: 1px solid #334155; padding-bottom: 8px; }
@@ -89,22 +110,22 @@ export function generateReportHtml(period: ReportPeriod): string {
   .stat { background: #1e293b; border-radius: 12px; padding: 20px 32px; text-align: center; }
   .stat .n { font-size: 2.5em; font-weight: bold; color: #a78bfa; }
   table { width: 100%; border-collapse: collapse; margin: 16px 0; }
-  th, td { padding: 10px 16px; text-align: right; border-bottom: 1px solid #1e293b; }
+  th, td { padding: 10px 16px; text-align: ${align}; border-bottom: 1px solid #1e293b; }
   th { background: #1e293b; color: #a78bfa; }
 </style>
 </head>
 <body>
-<h1>${title} — ${fromDate} إلى ${toDate}</h1>
+<h1>${L.title} — ${fromDate} ${L.to} ${toDate}</h1>
 <div class="stats">
-  <div class="stat"><div class="n">${data.totalArticles}</div><div>مقالات مجلوبة</div></div>
-  <div class="stat"><div class="n">${data.publishedArticles}</div><div>نشر ناجح</div></div>
-  <div class="stat"><div class="n">${data.failedPublishes}</div><div>نشر فاشل</div></div>
+  <div class="stat"><div class="n">${data.totalArticles}</div><div>${L.fetched}</div></div>
+  <div class="stat"><div class="n">${data.publishedArticles}</div><div>${L.success}</div></div>
+  <div class="stat"><div class="n">${data.failedPublishes}</div><div>${L.failed}</div></div>
 </div>
-<h2>أبرز المصادر</h2>
-<table><tr><th>المصدر</th><th>المقالات</th></tr>${rows(data.topSources)}</table>
-<h2>التصنيفات</h2>
-<table><tr><th>التصنيف</th><th>المقالات</th></tr>${rows(data.topCategories)}</table>
-<h2>المنصات</h2>
-<table><tr><th>المنصة</th><th>المنشورات</th></tr>${rows(data.platformBreakdown)}</table>
+<h2>${L.topSources}</h2>
+<table><tr><th>${L.source}</th><th>${L.articles}</th></tr>${rows(data.topSources)}</table>
+<h2>${L.categories}</h2>
+<table><tr><th>${L.category}</th><th>${L.articles}</th></tr>${rows(data.topCategories)}</table>
+<h2>${L.platforms}</h2>
+<table><tr><th>${L.platform}</th><th>${L.posts}</th></tr>${rows(data.platformBreakdown)}</table>
 </body></html>`;
 }

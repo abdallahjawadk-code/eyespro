@@ -291,7 +291,8 @@ export function registerAdvancedHandlers(ipcMain: IpcMain, getWin: () => Browser
 
   // ── Reports ───────────────────────────────────────────────────────────────
   ipcMain.handle('reports:generate', (_e, period: 'weekly' | 'monthly') => ok(generateReport(period)));
-  ipcMain.handle('reports:html', (_e, period: 'weekly' | 'monthly') => ok({ html: generateReportHtml(period) }));
+  ipcMain.handle('reports:html', (_e, period: 'weekly' | 'monthly', lang?: string) =>
+    ok({ html: generateReportHtml(period, lang === 'en' ? 'en' : 'ar') }));
 
   // ── Feature 3: Semantic deduplication ────────────────────────────────────
   ipcMain.handle('dedup:check', (_e, title: string, summary: string) =>

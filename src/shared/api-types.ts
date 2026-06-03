@@ -856,7 +856,7 @@ export interface EyesProApi {
   };
   reports: {
     generate: (period: 'weekly' | 'monthly') => Inv<unknown>;
-    html: (period: 'weekly' | 'monthly') => Inv<{ html: string }>;
+    html: (period: 'weekly' | 'monthly', lang?: string) => Inv<{ html: string }>;
   };
   opml: {
     preview: (xml: string) => Inv<{ count: number; outlines: unknown[] }>;

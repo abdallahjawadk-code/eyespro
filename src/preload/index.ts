@@ -355,7 +355,7 @@ const api: EyesProApi = {
   },
   reports: {
     generate: (period: 'weekly' | 'monthly') => invoke('reports:generate', period),
-    html: (period: 'weekly' | 'monthly') => invoke('reports:html', period)
+    html: (period: 'weekly' | 'monthly', lang?: string) => invoke('reports:html', period, lang)
   },
   trendRadar: {
     list: (geo?: string) => invoke('trendRadar:list', geo),

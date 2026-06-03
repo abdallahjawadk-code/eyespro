@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { Btn, Card, Msg, Panel, Toolbar } from '../../../ui';
 
 export function ReportsScreen() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const [html, setHtml]       = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError]     = useState('');
@@ -13,7 +13,8 @@ export function ReportsScreen() {
     setError('');
     setHtml('');
     try {
-      const res = await window.eyespro.reports.html(period);
+      // Generate the report in the currently selected UI language.
+      const res = await window.eyespro.reports.html(period, i18n.language === 'en' ? 'en' : 'ar');
       if (res.ok && res.data?.html) {
         setHtml(res.data.html);
       } else {
@@ -24,7 +25,7 @@ export function ReportsScreen() {
     } finally {
       setLoading(false);
     }
-  }, [t]);
+  }, [t, i18n.language]);
 
   return (
     <Panel>
