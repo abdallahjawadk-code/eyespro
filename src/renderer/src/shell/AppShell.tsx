@@ -5,6 +5,7 @@ import { useTheme } from '../context/ThemeContext';
 import { Titlebar } from '../components/layout/Titlebar';
 import { CommandPalette } from '../components/ui/CommandPalette';
 import { ShortcutsHelp } from '../components/ui/ShortcutsHelp';
+import { Assistant } from '../components/assistant/Assistant';
 import { NAV_GROUPS, PAGE_TITLES } from '../core/navigation';
 import { VFXLayer } from '../components/vfx/VFXLayer';
 import { EyeLogo } from '../components/vfx/EyeLogo';
@@ -249,6 +250,7 @@ export function AppShell() {
       </div>
       <CommandPalette isOpen={cmdOpen} onClose={() => setCmdOpen(false)} />
       <ShortcutsHelp isOpen={shortcutsOpen} onClose={() => setShortcutsOpen(false)} />
+      <Assistant />
     </>
   );
 }

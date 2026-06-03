@@ -693,6 +693,14 @@ export function registerAdvancedHandlers(ipcMain: IpcMain, getWin: () => Browser
     } catch (e) { return { ok: false, error: (e as Error).message }; }
   });
 
+  // AI Assistant — natural-language command execution.
+  ipcMain.handle('assistant:command', async (_e, command: string, confirmed?: boolean) => {
+    try {
+      const { runAssistant } = await import('../services/assistant');
+      return ok(await runAssistant(String(command ?? ''), confirmed === true));
+    } catch (e) { return { ok: false, error: (e as Error).message }; }
+  });
+
   ipcMain.handle('downloader:delete', async (_e, filePath: string) => {
     try {
       const fs = await import('node:fs/promises');

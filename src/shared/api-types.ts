@@ -206,6 +206,16 @@ export interface BackupInfo {
   createdAt: string;
 }
 
+export interface AssistantResult {
+  ok: boolean;
+  reply: string;
+  tool: string;
+  data?: unknown;
+  needsConfirm?: boolean;
+  pendingArgs?: Record<string, unknown>;
+  error?: string;
+}
+
 export interface UpdaterStatus {
   currentVersion: string;
   available: boolean;
@@ -869,6 +879,9 @@ export interface EyesProApi {
     check: () => Inv<UpdaterStatus>;
     download: () => Inv<void>;
     install: () => Inv<void>;
+  };
+  assistant: {
+    command: (command: string, confirmed?: boolean) => Inv<AssistantResult>;
   };
   app: { copyright: () => string };
   translation: {

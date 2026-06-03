@@ -307,6 +307,7 @@ const CHANNEL_PERMS: Record<string, Perm> = {
   'downloader:clear': 'write',
   'downloader:extractAudio': 'write',
   'downloader:trim': 'write',
+  'assistant:command': 'write',
   'downloader:resize': 'write',
   'downloader:watermark': 'write',
 };
