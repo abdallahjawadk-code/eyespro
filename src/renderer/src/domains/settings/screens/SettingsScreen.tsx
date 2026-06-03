@@ -63,7 +63,7 @@ export function SettingsScreen() {
 
   const tabs: { id: SettingsTab; label: string; icon: string }[] = [
     { id: 'general', label: t('settings.general'), icon: '⚙️' },
-    { id: 'privacy', label: 'الخصوصية والأمان', icon: '🛡️' },
+    { id: 'privacy', label: t('settings.groupPrivacy', { defaultValue: 'Privacy & security' }), icon: '🛡️' },
     { id: 'ai', label: t('settings.groupAi'), icon: '🤖' },
     { id: 'about', label: t('settings.about'), icon: 'ℹ️' },
   ];
@@ -106,17 +106,16 @@ export function SettingsScreen() {
           )}
           {tab === 'general' && (
             <div style={{ marginTop: 16 }}>
-              <Card title="البروكسي (لتشغيل TikTok والمنصات الصعبة)">
+              <Card title={t('proxy.title', { defaultValue: 'Proxy (for TikTok & hard-to-reach platforms)' })}>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 10, maxWidth: 560 }}>
                   <p style={{ margin: 0, fontSize: 12.5, lineHeight: 1.7, color: 'var(--t2)' }}>
-                    أدخل بروكسي سكنياً مدفوعاً لرصد المنصات التي تحجب الطلبات الآلية (مثل TikTok).
-                    إذا تركت الحقل فارغاً يستخدم البرنامج البروكسيات المجانية تلقائياً.
+                    {t('proxy.desc', { defaultValue: 'Enter a paid residential proxy to monitor platforms that block automated requests (like TikTok). Leave the field empty to use free proxies automatically.' })}
                     <br />
-                    الصيغة المدعومة:&nbsp;
-                    <code dir="ltr" style={{ color: 'var(--t1)' }}>host:port</code> أو&nbsp;
+                    {t('proxy.format', { defaultValue: 'Supported format:' })}&nbsp;
+                    <code dir="ltr" style={{ color: 'var(--t1)' }}>host:port</code> {t('common.or', { defaultValue: 'or' })}&nbsp;
                     <code dir="ltr" style={{ color: 'var(--t1)' }}>http://user:pass@host:port</code>
                   </p>
-                  <Field label="عنوان البروكسي">
+                  <Field label={t('proxy.address', { defaultValue: 'Proxy address' })}>
                     <div style={{ display: 'flex', gap: 8 }}>
                       <Input
                         dir="ltr"
@@ -129,15 +128,15 @@ export function SettingsScreen() {
                       </Btn>
                       {settings.custom_proxy ? (
                         <Btn onClick={() => { setSettings((s) => ({ ...s, custom_proxy: '' })); void save('custom_proxy', ''); }}>
-                          مسح
+                          {t('common.clear', { defaultValue: 'Clear' })}
                         </Btn>
                       ) : null}
                     </div>
                   </Field>
                   <p style={{ margin: 0, fontSize: 11.5, color: 'var(--t3)' }}>
                     {settings.custom_proxy
-                      ? '✓ بروكسي مخصّص مُفعّل — له الأولوية على البروكسيات المجانية.'
-                      : 'لا يوجد بروكسي مخصّص — يُستخدم البروكسي المجاني التلقائي.'}
+                      ? t('proxy.customOn', { defaultValue: '✓ Custom proxy enabled — it takes priority over the free proxies.' })
+                      : t('proxy.customOff', { defaultValue: 'No custom proxy — the automatic free proxy is used.' })}
                   </p>
                 </div>
               </Card>
@@ -156,7 +155,7 @@ export function SettingsScreen() {
             </>
           )}
           {tab === 'privacy' && (
-            <Card title="إعدادات الخصوصية وشبكة التخفي Tor">
+            <Card title={t('tor.cardTitle', { defaultValue: 'Privacy & Tor stealth network settings' })}>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 20, maxWidth: 560 }}>
                 <style>{`
                   @keyframes pulseGlow {
@@ -169,7 +168,7 @@ export function SettingsScreen() {
                   }
                 `}</style>
                 <p style={{ margin: 0, fontSize: 13, lineHeight: 1.7, color: 'var(--t2)' }}>
-                  تتيح لك شبكة Tor المدمجة تجاوز حجب المواقع بنسبة 100% ورصد المنافسين دون الكشف عن هويتك الرقمية أو التعرض لتقييد الطلبات (Rate Limiting). يتم توجيه جميع عمليات جلب المصادر والمنافسين وتنزيل الفيديوهات عبرها تلقائياً عند التفعيل.
+                  {t('tor.desc', { defaultValue: 'The built-in Tor network lets you bypass site blocks completely and monitor competitors without exposing your digital identity or hitting rate limits. When enabled, all source/competitor fetching and video downloads are routed through it automatically.' })}
                 </p>
 
                 {/* Tor Activation Toggle */}
@@ -179,8 +178,8 @@ export function SettingsScreen() {
                   borderRadius: 10, border: '1px solid var(--border)'
                 }}>
                   <div>
-                    <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--t1)' }}>تفعيل توجيه حركة المرور عبر Tor</div>
-                    <div style={{ fontSize: 12, color: 'var(--t3)', marginTop: 2 }}>قم بتشغيل محرك Tor الداخلي لحماية اتصالات الزاحف وجلب المحتوى.</div>
+                    <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--t1)' }}>{t('tor.toggleTitle', { defaultValue: 'Route traffic through Tor' })}</div>
+                    <div style={{ fontSize: 12, color: 'var(--t3)', marginTop: 2 }}>{t('tor.toggleDesc', { defaultValue: 'Start the internal Tor engine to protect crawler and content-fetch connections.' })}</div>
                   </div>
                   <input
                     type="checkbox"
@@ -203,7 +202,7 @@ export function SettingsScreen() {
                     borderRadius: 10, border: '1px solid rgba(255, 255, 255, 0.04)'
                   }}>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                      <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--t2)' }}>حالة شبكة Tor الحالية</span>
+                      <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--t2)' }}>{t('tor.statusTitle', { defaultValue: 'Current Tor network status' })}</span>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                         <span className="pulsing-dot-tor" style={{
                           width: 10, height: 10, borderRadius: '50%',
@@ -214,22 +213,22 @@ export function SettingsScreen() {
                           fontSize: 12, fontWeight: 700,
                           color: torStatus.status === 'ready' ? 'var(--ok)' : torStatus.status === 'starting' ? 'var(--warn)' : 'var(--err)'
                         }}>
-                          {torStatus.status === 'ready' ? 'متصل وجاهز' : torStatus.status === 'starting' ? 'جاري الاتصال...' : 'متوقف / خطأ'}
+                          {torStatus.status === 'ready' ? t('tor.ready', { defaultValue: 'Connected & ready' }) : torStatus.status === 'starting' ? t('tor.starting', { defaultValue: 'Connecting…' }) : t('tor.stopped', { defaultValue: 'Stopped / error' })}
                         </span>
                       </div>
                     </div>
 
                     <div style={{ fontSize: 12, color: 'var(--t2)', background: 'rgba(255,255,255,0.02)', padding: '8px 12px', borderRadius: 6 }}>
-                      {torStatus.bootstrap || 'لا توجد معلومات إضافية عن الاتصال.'}
+                      {torStatus.bootstrap || t('tor.noInfo', { defaultValue: 'No additional connection info.' })}
                     </div>
 
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
                       <div style={{ background: 'rgba(255,255,255,0.01)', padding: '10px', borderRadius: 6, border: '1px solid var(--border)' }}>
-                        <div style={{ fontSize: 10, color: 'var(--t3)' }}>منفذ وكيل SOCKS5 Proxy</div>
+                        <div style={{ fontSize: 10, color: 'var(--t3)' }}>{t('tor.socksPort', { defaultValue: 'SOCKS5 proxy port' })}</div>
                         <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--t1)', marginTop: 4, fontFamily: 'monospace' }}>127.0.0.1:{torStatus.socksPort || 9050}</div>
                       </div>
                       <div style={{ background: 'rgba(255,255,255,0.01)', padding: '10px', borderRadius: 6, border: '1px solid var(--border)' }}>
-                        <div style={{ fontSize: 10, color: 'var(--t3)' }}>منفذ التحكم Control Port</div>
+                        <div style={{ fontSize: 10, color: 'var(--t3)' }}>{t('tor.controlPort', { defaultValue: 'Control port' })}</div>
                         <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--t1)', marginTop: 4, fontFamily: 'monospace' }}>127.0.0.1:{torStatus.controlPort || 9051}</div>
                       </div>
                     </div>
@@ -247,11 +246,11 @@ export function SettingsScreen() {
                             const rotated = Boolean(res?.ok && (res as { data?: { success?: boolean } }).data?.success);
                             setMsg({
                               ok: rotated,
-                              text: rotated ? 'تم تدوير هوية Tor بنجاح وبناء مسار اتصال جديد.' : 'فشل تدوير هوية Tor. يرجى المحاولة لاحقاً.'
+                              text: rotated ? t('tor.rotated', { defaultValue: 'Tor identity rotated successfully and a new circuit was built.' }) : t('tor.rotateFailed', { defaultValue: 'Failed to rotate Tor identity. Please try again later.' })
                             });
                           }}
                         >
-                          {rotating ? 'جاري التدوير وبناء الدائرة...' : '🔄 تدوير الهوية الرقمية (IP Rotation) الآن'}
+                          {rotating ? t('tor.rotating', { defaultValue: 'Rotating & building circuit…' }) : t('tor.rotateBtn', { defaultValue: '🔄 Rotate digital identity (IP rotation) now' })}
                         </Btn>
                       </div>
                     )}
