@@ -7,7 +7,7 @@
     "name": "Abdallahjk",
     "email": "admin@eyespro.app"
   },
-  "copyright": "Copyright © 2025–2026 Abdallahjk. All rights reserved.",
+  "copyright": "Copyright © 2025–2026 Masar. All rights reserved.",
   "license": "UNLICENSED",
   "private": true,
   "type": "module",
@@ -93,7 +93,7 @@
   "build": {
     "appId": "com.abdallahjk.eyespro",
     "productName": "EyesPro",
-    "copyright": "Copyright © Abdallahjk",
+    "copyright": "Copyright © 2025–2026 Masar",
     "publish": [
       {
         "provider": "github",
