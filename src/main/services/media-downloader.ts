@@ -602,8 +602,27 @@ export async function resizeForPlatform(inputPath: string, platform: PlatformRat
 }
 
 /** Extract audio from video as MP3 */
+/** True if the media file contains at least one audio stream. */
+async function hasAudioStream(inputPath: string): Promise<boolean> {
+  const ffmpeg = getFfmpegPath();
+  try {
+    // `ffmpeg -i <file>` with no output exits non-zero but first prints the
+    // input's stream table to stderr — which is what we parse for an Audio stream.
+    await execFileAsync(ffmpeg, ['-i', inputPath], { timeout: 60_000 });
+    return false;
+  } catch (e) {
+    const stderr = String((e as { stderr?: string }).stderr ?? (e as Error).message ?? '');
+    return /Stream\s+#\d+:\d+.*:\s*Audio:/i.test(stderr);
+  }
+}
+
 export async function extractAudio(inputPath: string): Promise<string> {
   const ffmpeg = getFfmpegPath();
+  // Fail early with a clear message when the video has no audio track — otherwise
+  // ffmpeg emits a cryptic "Output file does not contain any stream" error.
+  if (!(await hasAudioStream(inputPath))) {
+    throw new Error('هذا الملف لا يحتوي على مسار صوتي، فلا يمكن استخراج الصوت منه.');
+  }
   const output = editedPath(inputPath, 'audio', '.mp3');
   await execFileAsync(ffmpeg, [
     '-y', '-i', inputPath,
