@@ -7,35 +7,30 @@ GitHub نفسه هو السيرفر: ترفع المثبِّت + ملف `latest.
 ## نظرة عامة على الفكرة
 - لكل تحديث: ترفع `EyesPro-Setup-x.y.z.exe` + `latest.yml` (+ `*.blockmap`) إلى Release برقم نسخة جديد.
 - التطبيق يقرأ `latest.yml`، يقارن الرقم، ينزّل المثبّت ويتحقّق منه، ثم يثبّته عند موافقتك.
-- **مصدر البرنامج يبقى خاصاً**: نستخدم مستودعاً عاماً مخصّصاً للملفات فقط اسمه `eyespro-releases`.
+- المستودع العام `eyespro` (الموجود لديك) يستضيف الإصدارات. الحساب: `abdallahjawadk-code`.
 
 ---
 
 ## مرة واحدة فقط (الإعداد)
 
-### 1) أنشئ حساب GitHub
-اذهب إلى <https://github.com> → Sign up. اسم المستخدم المتوقّع في الإعداد هو **`Abdallahjk`**.
-> إن اخترت اسماً مختلفاً، عدّل `build.publish.owner` في `package.json`.
+الحساب `abdallahjawadk-code` والمستودع العام `eyespro` موجودان لديك بالفعل، فلا حاجة لإنشاء شيء.
+يتبقّى فقط رمز الوصول:
 
-### 2) أنشئ مستودع الإصدارات العام
-- اضغط **New repository**.
-- الاسم بالضبط: **`eyespro-releases`** (يطابق `build.publish.repo` في `package.json`).
-- اجعله **Public** (ضروري ليُنزّل التطبيق التحديث بدون رمز سرّي).
-- لا تضِف README. أنشئه فارغاً.
-> هذا المستودع يحوي **الملفات التنفيذية فقط**، لا الكود. كودك يبقى عندك/خاصاً.
-
-### 3) أنشئ رمز وصول (Token)
+### 1) أنشئ رمز وصول (Token)
 - GitHub → صورتك أعلى اليمين → **Settings** → في الأسفل **Developer settings**
   → **Personal access tokens** → **Tokens (classic)** → **Generate new token (classic)**.
 - الصلاحية: فعّل **`repo`** فقط. المدّة: 90 يوماً أو أطول.
 - انسخ الرمز (يظهر مرة واحدة) — يبدأ بـ `ghp_…`.
 
-### 4) خزّن الرمز كمتغيّر بيئة (PowerShell)
+### 2) خزّن الرمز كمتغيّر بيئة (PowerShell)
+> ⚠️ مهم: `electron-builder` يقرأ الرمز من **متغيّر بيئة باسم `GH_TOKEN`** فقط —
+> وليس من Windows Credential Manager (هذا الأخير يستخدمه `git push` فقط، لا النشر).
+
 ```powershell
 setx GH_TOKEN "ghp_رمزك_هنا"
 ```
 ثم **أغلق نافذة PowerShell وافتح واحدة جديدة** ليُحمَّل المتغيّر.
-> `setx` يحفظه دائماً. تحقّق: `echo $env:GH_TOKEN` (افتح نافذة جديدة أولاً).
+تحقّق: `echo $env:GH_TOKEN` (في النافذة الجديدة).
 
 ---
 
@@ -49,10 +44,10 @@ setx GH_TOKEN "ghp_رمزك_هنا"
 ```powershell
 npm run release
 ```
-هذا يبني المثبّت ويرفعه تلقائياً إلى Release **مسودّة (Draft)** في `eyespro-releases`.
+هذا يبني المثبّت ويرفعه تلقائياً إلى Release **مسودّة (Draft)** في `eyespro`.
 
 ### 3) انشر المسودّة
-- افتح `https://github.com/Abdallahjk/eyespro-releases/releases`.
+- افتح `https://github.com/abdallahjawadk-code/eyespro/releases`.
 - ستجد Release مسودّة بالرقم الجديد → **Edit** → **Publish release**.
 > طالما هي Draft، لن يراها المستخدمون. بمجرد Publish تصبح متاحة للتحديث.
 
@@ -66,7 +61,9 @@ npm run release
 - **التوقيع الرقمي (Code signing):** بدون توقيع، يُظهر ويندوز تحذير SmartScreen عند أول تثبيت.
   التحديث التلقائي يعمل بدونه، لكن التوقيع يحسّن الثقة. متغيّرات التوقيع في `.env.example`
   (`WIN_CSC_LINK` أو Azure Trusted Signing).
-- **الخصوصية:** `eyespro-releases` عام لكنه يحوي ملفات تنفيذية فقط. مستودع الكود (إن رفعته) اجعله Private.
+- **الخصوصية:** مستودع `eyespro` عام ويحوي **كودك المصدري** حالياً. إن أردت إخفاء الكود لاحقاً:
+  اجعل `eyespro` خاصاً، وأنشئ مستودعاً عاماً منفصلاً (مثل `eyespro-releases`) للإصدارات فقط،
+  ثم عدّل `repo` في `package.json`. (الحماية الفعلية للتطبيق تأتي من bytecode + Fuses + نظام الترخيص.)
 - **النسخة المحمولة (portable):** التحديث التلقائي يعمل مع مثبّت **NSIS** فقط، لا مع النسخة المحمولة.
 - **الرجوع للخلف:** لا تنشر رقماً أقل. إن أخطأت، انشر رقماً أعلى بإصلاح.
 - **اختبار محلي بدون نشر:** `npm run build:win` يبني محلياً دون رفع.

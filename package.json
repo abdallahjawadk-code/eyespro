@@ -97,8 +97,8 @@
     "publish": [
       {
         "provider": "github",
-        "owner": "Abdallahjk",
-        "repo": "eyespro-releases"
+        "owner": "abdallahjawadk-code",
+        "repo": "eyespro"
       }
     ],
     "directories": {
