@@ -797,7 +797,7 @@ export interface EyesProApi {
     importPath: (path: string) => Inv<{ ok: boolean; articleId?: number; error?: string }>;
     probe: (filePath: string) => Inv<unknown>;
     /** Universal in-app playback: returns a playable eyesmedia:// URL, converting (remux/transcode) if needed. */
-    prepareForPlayback: (filePath: string) => Inv<{ url?: string; mode?: 'native' | 'remux' | 'transcode'; error?: string }>;
+    prepareForPlayback: (filePath: string, force?: boolean) => Inv<{ url?: string; mode?: 'native' | 'remux' | 'transcode'; error?: string }>;
     mediaToolsStatus: () => Inv<{ source: 'updated' | 'bundled'; ffmpeg: string; updatedAvailable: boolean }>;
     updateMediaTools: () => Inv<{ ok: boolean; source: string; error?: string }>;
     onPrepareProgress: (cb: (data: { pct: number; mode: string }) => void) => (() => void);

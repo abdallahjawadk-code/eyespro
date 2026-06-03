@@ -141,6 +141,7 @@ function runFfmpeg(
 export async function prepareForPlayback(
   filePath: string,
   onProgress?: (pct: number, mode: PlaybackMode) => void,
+  force = false,
 ): Promise<PreparedPlayback> {
   if (!filePath || !fs.existsSync(filePath)) return { ok: false, error: 'الملف غير موجود' };
 
@@ -157,16 +158,25 @@ export async function prepareForPlayback(
     : plan;
 
   const outFile = join(cacheDir(), cacheKey(filePath, effective.outExt));
-  if (fs.existsSync(outFile) && fs.statSync(outFile).size > 0) {
+  // `force` (player retry) busts a possibly-corrupt cached file.
+  if (force) { try { fs.unlinkSync(outFile); } catch { /* ignore */ } }
+  else if (fs.existsSync(outFile) && fs.statSync(outFile).size > 0) {
     return { ok: true, url: toLocalVideoUrl(outFile), mode: effective.mode };
   }
 
+  // Write to a temp file then rename on success — so an interrupted/partial transcode
+  // never gets cached and returned as a corrupt "ready" file on the next open. The temp
+  // name keeps the real extension because ffmpeg picks the output muxer from it.
+  const tmpFile = join(cacheDir(), `tmp_${cacheKey(filePath, effective.outExt)}`);
   try {
     log.info(`Preparing playback (${effective.mode}) for ${filePath}`);
-    await runFfmpeg(filePath, effective.ffmpegArgs, outFile, p.durationSec, (pct) => onProgress?.(pct, effective.mode));
-    if (!fs.existsSync(outFile) || fs.statSync(outFile).size === 0) throw new Error('produced empty output');
+    try { fs.unlinkSync(tmpFile); } catch { /* ignore */ }
+    await runFfmpeg(filePath, effective.ffmpegArgs, tmpFile, p.durationSec, (pct) => onProgress?.(pct, effective.mode));
+    if (!fs.existsSync(tmpFile) || fs.statSync(tmpFile).size === 0) throw new Error('produced empty output');
+    fs.renameSync(tmpFile, outFile); // atomic publish
     return { ok: true, url: toLocalVideoUrl(outFile), mode: effective.mode };
   } catch (err) {
+    try { fs.unlinkSync(tmpFile); } catch { /* ignore */ }
     try { if (fs.existsSync(outFile)) fs.unlinkSync(outFile); } catch { /* ignore */ }
     log.warn('playback preparation failed', { error: (err as Error).message });
     return { ok: false, error: `تعذّر تجهيز الفيديو للتشغيل: ${(err as Error).message}` };

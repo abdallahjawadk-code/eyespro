@@ -42,6 +42,7 @@ export function VideoPlayer({ src, title, filePath, onClose }: VideoPlayerProps)
   const [prepMode, setPrepMode] = useState<'remux' | 'transcode' | 'native' | null>(null);
   const preparingRef = useRef(false);
   const preparedRef = useRef(false);
+  const forcedRef = useRef(false);
 
   const isAudio = src.match(/\.(mp3|m4a|aac|ogg|wav|flac)$/i) != null;
 
@@ -51,6 +52,7 @@ export function VideoPlayer({ src, title, filePath, onClose }: VideoPlayerProps)
     setEditMsg(null);
     preparedRef.current = false;
     preparingRef.current = false;
+    forcedRef.current = false;
     setPreparing(false);
     setPrepProgress(0);
     setPrepMode(null);
@@ -63,18 +65,21 @@ export function VideoPlayer({ src, title, filePath, onClose }: VideoPlayerProps)
     return typeof off === 'function' ? off : undefined;
   }, []);
 
-  const prepareInApp = useCallback(async () => {
-    if (!filePath || preparingRef.current || preparedRef.current) return;
+  const prepareInApp = useCallback(async (force = false) => {
+    if (!filePath || preparingRef.current) return;
+    if (preparedRef.current && !force) return;
     preparingRef.current = true;
+    if (force) preparedRef.current = false;
     setPreparing(true);
     setError('');
     setPrepProgress(0);
     try {
-      const res = await window.eyespro.video.prepareForPlayback(filePath) as { ok: boolean; url?: string; mode?: 'remux' | 'transcode' | 'native'; error?: string };
+      const res = await window.eyespro.video.prepareForPlayback(filePath, force) as { ok: boolean; url?: string; mode?: 'remux' | 'transcode' | 'native'; error?: string };
       if (res.ok && res.url) {
         preparedRef.current = true;
         setPrepMode(res.mode ?? null);
-        setPlayerSrc(res.url);
+        // cache-bust the URL so the <video> reloads even if the path is unchanged
+        setPlayerSrc(`${res.url}${res.url.includes('?') ? '&' : '?'}_t=${Date.now()}`);
         setError('');
       } else {
         setError(res.error ?? 'تعذّر تجهيز الفيديو للتشغيل');
@@ -107,13 +112,12 @@ export function VideoPlayer({ src, title, filePath, onClose }: VideoPlayerProps)
     const onMeta  = () => { setDuration(v.duration); setLoaded(true); };
     const onCanPlay = () => setLoaded(true);
     const onErr   = () => {
-      const code = v.error?.code;
-      // Unsupported codec/container (code 4): convert in-app instead of failing.
-      if (code === 4 && filePath && !preparedRef.current && !preparingRef.current) {
-        void prepareInApp();
-        return;
+      const code = v.error?.code; // 3 = decode error, 4 = format/codec unsupported
+      if ((code === 3 || code === 4) && filePath && !preparingRef.current) {
+        if (!preparedRef.current) { void prepareInApp(false); return; }   // original failed → convert
+        if (!forcedRef.current) { forcedRef.current = true; void prepareInApp(true); return; } // converted file failed → force re-transcode once
       }
-      const msg = code === 4
+      const msg = (code === 3 || code === 4)
         ? 'تعذّر تجهيز الفيديو للتشغيل في هذه الصيغة'
         : 'تعذّر تشغيل الملف — تأكد أنه مكتمل التحميل';
       setError(msg);
@@ -352,7 +356,7 @@ export function VideoPlayer({ src, title, filePath, onClose }: VideoPlayerProps)
           <span style={{ color: '#f87171', fontSize: 12, flex: 1 }}>⚠️ {error}</span>
           {filePath && !preparing && (
             <button
-              onClick={() => { preparedRef.current = false; void prepareInApp(); }}
+              onClick={() => { forcedRef.current = true; void prepareInApp(true); }}
               style={{ ...btnStyle, background: 'rgba(248,113,113,0.2)', border: '1px solid rgba(248,113,113,0.4)', color: '#fca5a5', padding: '4px 12px', borderRadius: 6 }}
             >
               🔄 إعادة المحاولة

@@ -100,10 +100,10 @@ export function registerAdvancedHandlers(ipcMain: IpcMain, getWin: () => Browser
   ipcMain.handle('video:specs', () => ok(PLATFORM_SPECS));
 
   // Universal in-app playback: probe → native / remux / transcode to a playable URL.
-  ipcMain.handle('video:prepareForPlayback', async (_e, filePath: string) => {
+  ipcMain.handle('video:prepareForPlayback', async (_e, filePath: string, force?: boolean) => {
     const win = getWin();
     const result = await prepareForPlayback(String(filePath), (pct, mode) =>
-      win?.webContents.send('video:prepareProgress', { pct, mode }),
+      win?.webContents.send('video:prepareProgress', { pct, mode }), !!force,
     );
     return result.ok ? ok(result) : { ok: false, error: result.error };
   });
