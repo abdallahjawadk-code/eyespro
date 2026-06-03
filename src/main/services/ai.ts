@@ -374,6 +374,9 @@ export function formatAiErrorMessage(raw?: string): string {
   if (m.includes('429') || m.includes('too many requests')) {
     return 'طلبات كثيرة جداً على مزود الذكاء الاصطناعي. انتظر دقيقة ثم أعد المحاولة، أو غيّر المزود من الإعدادات.';
   }
+  if (m.includes('ai off')) {
+    return 'الذكاء الاصطناعي مُعطّل. لتفعيله: الإعدادات → الذكاء الاصطناعي → اختر مزوّداً (محلّي أو سحابي).';
+  }
   if (m.includes('unconfigured') || m.includes('not configured')) {
     return 'لم يُضبط الذكاء الاصطناعي. من الإعدادات → الذكاء الاصطناعي: فعّل Ollama المدمج أو أدخل مفتاح Gemini/OpenAI/Groq/Anthropic.';
   }
@@ -402,6 +405,9 @@ export async function checkAiProviderReady(): Promise<{
   try {
     if (provider === 'unconfigured') {
       return { ok: false, provider, error: formatAiErrorMessage('AI unconfigured') };
+    }
+    if (provider === 'off') {
+      return { ok: false, provider, error: formatAiErrorMessage('AI off') };
     }
     if (provider === 'ollama') {
       if (isBuiltinOllamaEnabled() && !(await isOllamaApiReachable())) {
@@ -436,6 +442,7 @@ export async function checkAiProviderReady(): Promise<{
 export async function runAiRaw(prompt: string, input: string, provider: string, model: string): Promise<string> {
   const p = provider?.trim() || resolveEffectiveAiProvider();
   if (p === 'unconfigured') throw new Error(formatAiErrorMessage('AI unconfigured'));
+  if (p === 'off') throw new Error(formatAiErrorMessage('AI off'));
   // Resolve model per-provider so a stale global ai_model never poisons a different provider
   const m = model?.trim() || resolveModelForProvider(p);
   if (p === 'openai') return callOpenAI(prompt, input, m);
@@ -453,7 +460,7 @@ export async function runAiRaw(prompt: string, input: string, provider: string, 
  */
 export function resolveAiProviderChain(): { provider: string; model: string }[] {
   const primary = resolveEffectiveAiProvider();
-  if (primary === 'unconfigured') return [];
+  if (primary === 'unconfigured' || primary === 'off') return [];
   const chain: string[] = [];
   const add = (p: string, ok: boolean) => { if (ok && !chain.includes(p)) chain.push(p); };
   add(primary, true);

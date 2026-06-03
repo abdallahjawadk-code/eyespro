@@ -131,11 +131,22 @@ export function AiProvidersPanel({
     <>
       <p className="sp-plat-intro">{t('aiProv.intro')}</p>
 
-      {/* Active provider summary */}
-      {activeProvider && activeProvider !== 'unconfigured' && (
+      {/* Active provider summary + master on/off */}
+      {activeProvider === 'off' ? (
         <div style={{
           display: 'flex', alignItems: 'center', gap: 10, padding: '8px 14px',
-          background: 'var(--bg2)', borderRadius: 8, marginBottom: 16,
+          background: 'var(--bg2)', borderRadius: 8, marginBottom: 12,
+          border: '1px solid var(--warn)', fontSize: '0.85rem',
+        }}>
+          <span style={{ color: 'var(--warn)', fontWeight: 700 }}>⊘ {t('aiProv.disabled', { defaultValue: 'AI is turned off' })}</span>
+          <span style={{ marginInlineStart: 'auto', color: 'var(--t2)', fontSize: '0.78rem' }}>
+            {t('aiProv.disabledHint', { defaultValue: 'Pick a provider below to enable it.' })}
+          </span>
+        </div>
+      ) : activeProvider && activeProvider !== 'unconfigured' ? (
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: 10, padding: '8px 14px',
+          background: 'var(--bg2)', borderRadius: 8, marginBottom: 12,
           border: '1px solid var(--border)', fontSize: '0.85rem',
         }}>
           <span style={{ color: 'var(--ok)', fontWeight: 700 }}>● {t('aiProv.active')}</span>
@@ -145,11 +156,23 @@ export function AiProvidersPanel({
               · {activeModel}
             </span>
           )}
-          <span style={{ marginInlineStart: 'auto', color: 'var(--t2)', fontSize: '0.75rem' }}>
-            {t('aiProv.modelAutoSelected') || 'الموديل محدد تلقائياً'}
-          </span>
+          <button
+            type="button"
+            onClick={() => onSetActive('off')}
+            style={{
+              marginInlineStart: 'auto', padding: '4px 10px', borderRadius: 6, cursor: 'pointer',
+              border: '1px solid var(--border)', background: 'transparent', color: 'var(--t2)', fontSize: '0.75rem',
+            }}
+          >
+            {t('aiProv.disable', { defaultValue: 'Turn off AI' })}
+          </button>
         </div>
-      )}
+      ) : null}
+
+      {/* Multi-provider fallback hint */}
+      <p style={{ fontSize: '0.78rem', color: 'var(--t2)', margin: '0 0 14px', lineHeight: 1.6 }}>
+        💡 {t('aiProv.fallbackHint', { defaultValue: 'You can configure several providers — if one fails or is blocked, the app automatically falls back to the next one.' })}
+      </p>
 
       <div className="sp-plat-grid">
         {CLOUD_PROVIDERS.map((plat) => {
