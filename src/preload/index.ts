@@ -423,6 +423,7 @@ const api: EyesProApi = {
     openFolder: ()                                   => invoke('downloader:openFolder'),
     openFile:   (filePath: string)                   => invoke('downloader:openFile', filePath),
     revealFile: (filePath: string)                   => invoke('downloader:revealFile', filePath),
+    copyFile:   (filePath: string)                   => invoke('downloader:copyFile', filePath),
     clear:        ()                                                     => invoke('downloader:clear'),
     mediaUrl:     (filePath: string)                                     => invoke('downloader:mediaUrl', filePath),
     scan:         ()                                                     => invoke('downloader:scan'),

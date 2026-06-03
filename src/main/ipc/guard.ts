@@ -295,6 +295,7 @@ const CHANNEL_PERMS: Record<string, Perm> = {
   'downloader:openFile': 'read',
   'downloader:openFolder': 'read',
   'downloader:revealFile': 'read',
+  'downloader:copyFile': 'read',
   'downloader:start': 'write',
   'downloader:install': 'write',
   'downloader:update': 'write',

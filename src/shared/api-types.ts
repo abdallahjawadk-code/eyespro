@@ -935,6 +935,7 @@ export interface EyesProApi {
     openFolder:   () => Inv<void>;
     openFile:     (filePath: string) => Inv<void>;
     revealFile:   (filePath: string) => Inv<void>;
+    copyFile:     (filePath: string) => Inv<void>;
     clear:        () => Inv<void>;
     mediaUrl:     (filePath: string) => Inv<string>;
     trim:         (inputPath: string, startSec: number, endSec: number) => Inv<{ outputPath: string }>;
