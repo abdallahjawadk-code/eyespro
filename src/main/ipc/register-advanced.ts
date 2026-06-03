@@ -639,6 +639,15 @@ export function registerAdvancedHandlers(ipcMain: IpcMain, getWin: () => Browser
     } catch (e) { return { ok: false, error: (e as Error).message }; }
   });
 
+  // Reveal the file selected in the OS file manager so the user can share it via the
+  // system share menu / drag it into a chat app (works for any local/edited file).
+  ipcMain.handle('downloader:revealFile', (_e, filePath: string) => {
+    try {
+      shell.showItemInFolder(String(filePath).trim());
+      return ok(undefined);
+    } catch (e) { return { ok: false, error: (e as Error).message }; }
+  });
+
   ipcMain.handle('downloader:clear', async () => {
     try {
       const { clearCompletedDownloads } = await import('../services/media-downloader');

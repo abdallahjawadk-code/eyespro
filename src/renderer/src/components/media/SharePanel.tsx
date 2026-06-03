@@ -7,8 +7,9 @@
 import { useState } from 'react';
 
 interface SharePanelProps {
-  url: string;     // رابط الفيديو الأصلي للمشاركة
+  url: string;     // رابط الفيديو الأصلي للمشاركة (لمشاركة الرابط عبر المنصات)
   title: string;   // عنوان الفيديو
+  filePath?: string; // مسار الملف المحلي — لمشاركته عبر نظام ويندوز مباشرة
   onClose: () => void;
 }
 
@@ -70,7 +71,7 @@ const PLATFORMS: Platform[] = [
   },
 ];
 
-export function SharePanel({ url, title, onClose }: SharePanelProps) {
+export function SharePanel({ url, title, filePath, onClose }: SharePanelProps) {
   const [editUrl, setEditUrl]     = useState(url);
   const [editTitle, setEditTitle] = useState(title);
   const [copied, setCopied]       = useState(false);
@@ -183,9 +184,29 @@ export function SharePanel({ url, title, onClose }: SharePanelProps) {
           ))}
         </div>
 
+        {/* Local-file sharing via the OS — works without a public link */}
+        {filePath && (
+          <div style={{ marginTop: 16, paddingTop: 14, borderTop: '1px solid var(--border)' }}>
+            <div style={{ fontSize: 11, color: 'var(--t2)', marginBottom: 8, textAlign: 'center' }}>
+              أو شارك ملف الفيديو مباشرةً عبر نظام ويندوز:
+            </div>
+            <button
+              onClick={() => void window.eyespro.downloader.revealFile(filePath)}
+              style={{
+                width: '100%', padding: '10px 12px', borderRadius: 10, cursor: 'pointer',
+                border: '1px solid var(--accent)', background: 'var(--accent-muted, rgba(230,57,70,0.12))',
+                color: 'var(--accent)', fontSize: 12.5, fontWeight: 700,
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+              }}
+            >
+              📂 إظهار الملف في المستكشف (للمشاركة عبر النظام)
+            </button>
+          </div>
+        )}
+
         {!editUrl.trim() && (
-          <div style={{ marginTop: 12, fontSize: 11, color: 'var(--warn)', textAlign: 'center' }}>
-            أدخل رابط الفيديو أعلاه لتفعيل المشاركة
+          <div style={{ marginTop: 12, fontSize: 11, color: 'var(--t3)', textAlign: 'center' }}>
+            أدخل رابط الفيديو أعلاه لمشاركته عبر المنصات{filePath ? '، أو شارك الملف مباشرةً عبر النظام أعلاه.' : '.'}
           </div>
         )}
       </div>

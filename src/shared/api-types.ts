@@ -347,6 +347,7 @@ export interface LocalFile {
   size: number;
   ext: string;
   mtimeMs: number;
+  sourceUrl?: string | null;
 }
 
 export interface DownloadJob {
@@ -933,6 +934,7 @@ export interface EyesProApi {
     info:         (url: string) => Inv<VideoInfo>;
     openFolder:   () => Inv<void>;
     openFile:     (filePath: string) => Inv<void>;
+    revealFile:   (filePath: string) => Inv<void>;
     clear:        () => Inv<void>;
     mediaUrl:     (filePath: string) => Inv<string>;
     trim:         (inputPath: string, startSec: number, endSec: number) => Inv<{ outputPath: string }>;

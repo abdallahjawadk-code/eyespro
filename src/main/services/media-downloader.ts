@@ -405,6 +405,7 @@ export async function downloadMedia(
 
     job.status = 'done';
     job.progress = 100;
+    if (job.outputPath && job.url) recordDownloadSource(job.outputPath, job.url);
     notify(job);
 
   } catch (e) {
@@ -613,9 +614,33 @@ export async function extractAudio(inputPath: string): Promise<string> {
 }
 
 /** Scan downloads folder and return all video/audio files */
-export function scanDownloads(): { name: string; path: string; size: number; ext: string; mtimeMs: number }[] {
+// ─── Source-URL persistence ───────────────────────────────────────────────────
+// Map each downloaded file to its origin URL so the library "Share" action can
+// auto-fill the original link (web-intent share) without re-entering it. Stored in
+// a small JSON map under userData so it survives restarts (the jobs Map does not).
+
+function sourcesFile(): string {
+  return join(app.getPath('userData'), 'download-sources.json');
+}
+function loadDownloadSources(): Record<string, string> {
+  try { return JSON.parse(fs.readFileSync(sourcesFile(), 'utf8')) as Record<string, string>; } catch { return {}; }
+}
+function recordDownloadSource(filePath: string, url: string): void {
+  try {
+    const m = loadDownloadSources();
+    m[filePath] = url;
+    fs.writeFileSync(sourcesFile(), JSON.stringify(m), 'utf8');
+  } catch { /* non-fatal */ }
+}
+
+export interface ScannedFile {
+  name: string; path: string; size: number; ext: string; mtimeMs: number; sourceUrl: string | null;
+}
+
+export function scanDownloads(): ScannedFile[] {
   const dir = getDownloadsDir();
   const VIDEO_EXTS = new Set(['.mp4', '.webm', '.mkv', '.mov', '.avi', '.m4v', '.mp3', '.m4a', '.wav', '.ogg', '.flac']);
+  const sources = loadDownloadSources();
   try {
     return readdirSync(dir)
       .map((f) => {
@@ -623,9 +648,9 @@ export function scanDownloads(): { name: string; path: string; size: number; ext
         const ext = extname(f).toLowerCase();
         if (!VIDEO_EXTS.has(ext)) return null;
         const stat = statSync(fullPath);
-        return { name: basename(f, ext), path: fullPath, size: stat.size, ext, mtimeMs: stat.mtimeMs };
+        return { name: basename(f, ext), path: fullPath, size: stat.size, ext, mtimeMs: stat.mtimeMs, sourceUrl: sources[fullPath] ?? null };
       })
       .filter(Boolean)
-      .sort((a, b) => (b!.mtimeMs - a!.mtimeMs)) as { name: string; path: string; size: number; ext: string; mtimeMs: number }[];
+      .sort((a, b) => (b!.mtimeMs - a!.mtimeMs)) as ScannedFile[];
   } catch { return []; }
 }
