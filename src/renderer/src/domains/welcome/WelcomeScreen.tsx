@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from '../../context/ThemeContext';
 import { EyeLogo } from '../../components/vfx/EyeLogo';
+import { MasarLogo } from '../../components/vfx/MasarLogo';
 import './welcome.css';
 
 /* ── Breaking-news ticker ─────────────────────────────────── */
@@ -408,9 +409,7 @@ export function WelcomeScreen() {
 
       {/* ── Footer ── */}
       <footer className="wl-footer">
-        <span className="wl-footer-brand">
-          {lang === 'ar' ? 'مسار' : 'Masar'}
-        </span>
+        <MasarLogo />
         <span className="wl-footer-sep" aria-hidden>·</span>
         <span className="wl-footer-copy">
           © {year} {lang === 'ar' ? 'جميع الحقوق محفوظة' : 'All rights reserved'}
