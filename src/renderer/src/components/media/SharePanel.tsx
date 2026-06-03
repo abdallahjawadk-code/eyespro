@@ -9,7 +9,6 @@ import { useState } from 'react';
 interface SharePanelProps {
   url: string;     // رابط الفيديو الأصلي للمشاركة (لمشاركة الرابط عبر المنصات)
   title: string;   // عنوان الفيديو
-  filePath?: string; // مسار الملف المحلي — لمشاركته عبر نظام ويندوز مباشرة
   onClose: () => void;
 }
 
@@ -71,11 +70,10 @@ const PLATFORMS: Platform[] = [
   },
 ];
 
-export function SharePanel({ url, title, filePath, onClose }: SharePanelProps) {
+export function SharePanel({ url, title, onClose }: SharePanelProps) {
   const [editUrl, setEditUrl]     = useState(url);
   const [editTitle, setEditTitle] = useState(title);
   const [copied, setCopied]       = useState(false);
-  const [fileCopied, setFileCopied] = useState(false);
 
   function openShare(platform: Platform) {
     const shareUrl = platform.buildUrl(editUrl.trim(), editTitle.trim());
@@ -185,45 +183,9 @@ export function SharePanel({ url, title, filePath, onClose }: SharePanelProps) {
           ))}
         </div>
 
-        {/* Local-file sharing — copy the actual file, then paste it into any chat app. No link needed. */}
-        {filePath && (
-          <div style={{ marginTop: 16, paddingTop: 14, borderTop: '1px solid var(--border)' }}>
-            <div style={{ fontSize: 11.5, color: 'var(--t2)', marginBottom: 8, textAlign: 'center', fontWeight: 600 }}>
-              📎 لمشاركة ملف الفيديو نفسه (واتساب / تيليجرام …):
-            </div>
-            <button
-              onClick={async () => {
-                const r = await window.eyespro.downloader.copyFile(filePath);
-                if (r && (r as { ok?: boolean }).ok) { setFileCopied(true); setTimeout(() => setFileCopied(false), 3000); }
-                else { void window.eyespro.downloader.revealFile(filePath); }
-              }}
-              style={{
-                width: '100%', padding: '12px', borderRadius: 10, cursor: 'pointer',
-                border: 'none', background: fileCopied ? '#2e7d32' : 'var(--accent)',
-                color: '#fff', fontSize: 13, fontWeight: 700,
-                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-                transition: 'background 0.2s',
-              }}
-            >
-              {fileCopied ? '✅ تم نسخ الملف — الصقه الآن في الدردشة (Ctrl+V)' : '📋 نسخ الملف للمشاركة (ثم الصقه في الدردشة)'}
-            </button>
-            <button
-              onClick={() => void window.eyespro.downloader.revealFile(filePath)}
-              style={{
-                width: '100%', marginTop: 8, padding: '8px 12px', borderRadius: 10, cursor: 'pointer',
-                border: '1px solid var(--border)', background: 'transparent',
-                color: 'var(--t2)', fontSize: 11.5, fontWeight: 600,
-                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-              }}
-            >
-              📂 أو إظهار الملف في مجلد التحميلات
-            </button>
-          </div>
-        )}
-
-        {!editUrl.trim() && !filePath && (
-          <div style={{ marginTop: 12, fontSize: 11, color: 'var(--t3)', textAlign: 'center' }}>
-            أدخل رابط الفيديو أعلاه لمشاركته عبر المنصات.
+        {!editUrl.trim() && (
+          <div style={{ marginTop: 12, fontSize: 11, color: 'var(--warn)', textAlign: 'center' }}>
+            أدخل رابط الفيديو أعلاه لتفعيل المشاركة
           </div>
         )}
       </div>

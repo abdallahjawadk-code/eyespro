@@ -1,6 +1,5 @@
 import { dialog, shell, type BrowserWindow, type IpcMain, type OpenDialogOptions } from 'electron';
 import path from 'node:path';
-import { execFile } from 'node:child_process';
 import { loginByUserId } from '../auth/auth-service';
 import { createArticle, updateArticle } from '../services/articles';
 import { sanitizeInt } from '../security/sanitize';
@@ -638,43 +637,6 @@ export function registerAdvancedHandlers(ipcMain: IpcMain, getWin: () => Browser
       }
       return ok(undefined);
     } catch (e) { return { ok: false, error: (e as Error).message }; }
-  });
-
-  // Reveal the file selected in the OS file manager so the user can share it via the
-  // system share menu / drag it into a chat app (works for any local/edited file).
-  ipcMain.handle('downloader:revealFile', (_e, filePath: string) => {
-    try {
-      shell.showItemInFolder(String(filePath).trim());
-      return ok(undefined);
-    } catch (e) { return { ok: false, error: (e as Error).message }; }
-  });
-
-  // Copy the actual video FILE to the clipboard (Windows file-drop / CF_HDROP) so the user
-  // can paste it straight into WhatsApp / Telegram / any chat app — no public link needed.
-  // Electron's clipboard can't write a file-drop, so we use the .NET clipboard via PowerShell.
-  // The path is passed through an env var (not the command string) to avoid any quoting/injection.
-  ipcMain.handle('downloader:copyFile', (_e, filePath: string) => {
-    const p = String(filePath ?? '').trim();
-    if (!p) return Promise.resolve({ ok: false, error: 'no file path' });
-    if (process.platform !== 'win32') return Promise.resolve({ ok: false, error: 'only supported on Windows' });
-    const script = [
-      'Add-Type -AssemblyName System.Windows.Forms;',
-      "if (-not (Test-Path -LiteralPath $env:EYESPRO_SHARE_FILE)) { exit 2 };",
-      '$c = New-Object System.Collections.Specialized.StringCollection;',
-      '$c.Add($env:EYESPRO_SHARE_FILE) | Out-Null;',
-      '[System.Windows.Forms.Clipboard]::SetFileDropList($c);',
-    ].join(' ');
-    return new Promise((resolve) => {
-      execFile(
-        'powershell.exe',
-        ['-NoProfile', '-NonInteractive', '-STA', '-Command', script],
-        { env: { ...process.env, EYESPRO_SHARE_FILE: p }, timeout: 15000, windowsHide: true },
-        (err) => {
-          if (err) resolve({ ok: false, error: (err as Error).message });
-          else resolve(ok(undefined));
-        },
-      );
-    });
   });
 
   ipcMain.handle('downloader:clear', async () => {

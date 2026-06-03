@@ -100,7 +100,7 @@ export function SocialVideoDomain() {
   // Player
   const [player, setPlayer]   = useState<{ src: string; title: string; filePath?: string } | null>(null);
   // Share
-  const [share, setShare]     = useState<{ url: string; title: string; filePath?: string } | null>(null);
+  const [share, setShare]     = useState<{ url: string; title: string } | null>(null);
 
   const dlListener = useRef(false);
 
@@ -211,7 +211,6 @@ export function SocialVideoDomain() {
         <SharePanel
           url={share.url}
           title={share.title}
-          filePath={share.filePath}
           onClose={() => setShare(null)}
         />
       )}
@@ -545,7 +544,7 @@ export function SocialVideoDomain() {
                           <Btn
                             variant="ghost"
                             style={{ fontSize: 10, padding: '3px 8px', color: 'var(--accent)' }}
-                            onClick={() => setShare({ url: f.sourceUrl || '', title: f.name, filePath: f.path })}
+                            onClick={() => setShare({ url: f.sourceUrl || '', title: f.name })}
                             title={t('socialVideo.shareTooltip')}
                           >
                             🔗
