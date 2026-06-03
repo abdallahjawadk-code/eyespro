@@ -1,149 +1,121 @@
 """
-Generate a professional EyesPro icon — glowing eye on dark background.
-Outputs resources/icon.ico with sizes: 16, 32, 48, 64, 128, 256
+Generate a professional EyesPro / Masar app icon.
+
+Concept: a modern rounded-square app tile (dark gradient) carrying the Masar
+identity — a clean eye whose iris is the brand red, with a subtle "route/path"
+line of nodes passing through it (مسار = path). Premium, minimal, legible down
+to 16px.
+
+Outputs:
+  resources/icon.ico       (16, 24, 32, 48, 64, 128, 256)
+  resources/icon-512.png   (for stores / marketing)
 """
 
-import math
+import os
 from PIL import Image, ImageDraw, ImageFilter
 
-def lerp_color(c1, c2, t):
-    return tuple(int(c1[i] + (c2[i] - c1[i]) * t) for i in range(4))
+ACCENT      = (230, 57, 70, 255)    # brand red  #E63946
+ACCENT_DK   = (150, 28, 38, 255)
+BG_TOP      = (26, 32, 52, 255)     # #1A2034
+BG_BOTTOM   = (8, 10, 20, 255)      # #080A14
+EYE_LIGHT   = (236, 240, 252, 255)
+NODE        = (120, 170, 255, 255)  # cool accent for the route nodes
+
+HERE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+RES  = os.path.join(HERE, "resources")
+
+
+def _vertical_gradient(size, top, bottom):
+    grad = Image.new("RGBA", (1, size), 0)
+    for y in range(size):
+        t = y / max(1, size - 1)
+        grad.putpixel((0, y), tuple(int(top[i] + (bottom[i] - top[i]) * t) for i in range(4)))
+    return grad.resize((size, size))
+
+
+def _rounded_mask(size, radius):
+    m = Image.new("L", (size, size), 0)
+    d = ImageDraw.Draw(m)
+    d.rounded_rectangle([0, 0, size - 1, size - 1], radius=radius, fill=255)
+    return m
+
 
 def draw_icon(size: int) -> Image.Image:
-    S = size
-    img = Image.new("RGBA", (S, S), (0, 0, 0, 0))
-    draw = ImageDraw.Draw(img)
-
+    SS = 4                      # supersample for smooth edges
+    S = size * SS
     cx, cy = S / 2, S / 2
-    R = S / 2
 
-    # ── Background circle ──────────────────────────────────────────────
-    bg_layer = Image.new("RGBA", (S, S), (0, 0, 0, 0))
-    bg_draw = ImageDraw.Draw(bg_layer)
+    img = Image.new("RGBA", (S, S), (0, 0, 0, 0))
 
-    # Outer dark navy circle
-    bg_draw.ellipse([0, 0, S - 1, S - 1], fill=(8, 10, 26, 255))
+    # ── Rounded tile with vertical gradient ──────────────────────────────
+    tile = _vertical_gradient(S, BG_TOP, BG_BOTTOM)
+    mask = _rounded_mask(S, radius=int(S * 0.22))
+    img.paste(tile, (0, 0), mask)
 
-    # Subtle gradient rim — draw concentric rings fading inward
-    for i in range(int(R * 0.12)):
-        t = i / (R * 0.12)
-        alpha = int(180 * (1 - t))
-        r = R - i
-        bg_draw.ellipse(
-            [cx - r, cy - r, cx + r, cy + r],
-            outline=(80, 60, 180, alpha),
-            width=1,
-        )
-
-    img = Image.alpha_composite(img, bg_layer)
     draw = ImageDraw.Draw(img)
 
-    # ── Eye whites / almond shape ──────────────────────────────────────
-    eye_w  = R * 1.28
-    eye_h  = R * 0.60
-    pad_x  = (S - eye_w) / 2
-    pad_y  = (S - eye_h) / 2
-
-    # Glow behind eye (blurred)
-    glow = Image.new("RGBA", (S, S), (0, 0, 0, 0))
-    gd   = ImageDraw.Draw(glow)
-    gd.ellipse(
-        [pad_x - R * 0.15, pad_y - R * 0.15,
-         pad_x + eye_w + R * 0.15, pad_y + eye_h + R * 0.15],
-        fill=(100, 60, 255, 80),
-    )
-    glow = glow.filter(ImageFilter.GaussianBlur(radius=S * 0.10))
-    img  = Image.alpha_composite(img, glow)
-    draw = ImageDraw.Draw(img)
-
-    # Eye white (very dark blue-white, not pure white)
-    draw.ellipse(
-        [pad_x, pad_y, pad_x + eye_w, pad_y + eye_h],
-        fill=(18, 22, 55, 255),
+    # Premium inner rim (thin accent line just inside the tile edge)
+    inset = int(S * 0.045)
+    draw.rounded_rectangle(
+        [inset, inset, S - inset, S - inset],
+        radius=int(S * 0.18),
+        outline=(*ACCENT[:3], 70), width=max(1, int(S * 0.006)),
     )
 
-    # ── Iris ───────────────────────────────────────────────────────────
-    ir = eye_h * 0.46
-    draw.ellipse(
-        [cx - ir, cy - ir, cx + ir, cy + ir],
-        fill=(55, 30, 180, 255),
-    )
-
-    # Iris colour gradient rings
-    iris_colors = [
-        (80,  45, 220, 255),
-        (100, 60, 240, 255),
-        (120, 80, 255, 255),
+    # ── Route / path: a subtle poly-line of nodes through the eye ─────────
+    route = Image.new("RGBA", (S, S), (0, 0, 0, 0))
+    rdraw = ImageDraw.Draw(route)
+    ys = cy
+    pts = [
+        (S * 0.16, ys + S * 0.06),
+        (S * 0.34, ys - S * 0.02),
+        (S * 0.50, ys),
+        (S * 0.66, ys - S * 0.02),
+        (S * 0.84, ys + S * 0.06),
     ]
-    for idx, col in enumerate(iris_colors):
-        r2 = ir * (0.85 - idx * 0.22)
-        draw.ellipse(
-            [cx - r2, cy - r2, cx + r2, cy + r2],
-            fill=col,
-        )
-
-    # ── Pupil ──────────────────────────────────────────────────────────
-    pr = ir * 0.38
-    draw.ellipse(
-        [cx - pr, cy - pr, cx + pr, cy + pr],
-        fill=(5, 5, 20, 255),
-    )
-
-    # ── Pupil highlight (cyan glint) ───────────────────────────────────
-    hl_layer = Image.new("RGBA", (S, S), (0, 0, 0, 0))
-    hl_draw  = ImageDraw.Draw(hl_layer)
-    hl_r     = pr * 0.55
-    hl_off   = pr * 0.28
-    hl_draw.ellipse(
-        [cx - hl_r + hl_off, cy - hl_r - hl_off,
-         cx + hl_r + hl_off, cy + hl_r - hl_off],
-        fill=(140, 220, 255, 220),
-    )
-    hl_layer = hl_layer.filter(ImageFilter.GaussianBlur(radius=max(1, S * 0.018)))
-    img = Image.alpha_composite(img, hl_layer)
+    rdraw.line(pts, fill=(*NODE[:3], 90), width=max(1, int(S * 0.012)), joint="curve")
+    for (px, py) in pts:
+        r = S * 0.018
+        rdraw.ellipse([px - r, py - r, px + r, py + r], fill=(*NODE[:3], 140))
+    route = route.filter(ImageFilter.GaussianBlur(S * 0.004))
+    img = Image.alpha_composite(img, route)
     draw = ImageDraw.Draw(img)
 
-    # ── Scan-line arc (techy detail) ──────────────────────────────────
-    if size >= 48:
-        arc_r = ir * 1.22
-        draw.arc(
-            [cx - arc_r, cy - arc_r, cx + arc_r, cy + arc_r],
-            start=210, end=330,
-            fill=(160, 120, 255, 160),
-            width=max(1, int(S * 0.025)),
-        )
+    # ── Eye almond (two arcs) ────────────────────────────────────────────
+    eye_w = S * 0.66
+    eye_h = S * 0.40
+    lw = max(2, int(S * 0.030))
+    box = [cx - eye_w / 2, cy - eye_h / 2, cx + eye_w / 2, cy + eye_h / 2]
+    draw.arc(box, start=200, end=340, fill=EYE_LIGHT, width=lw)   # upper lid
+    draw.arc(box, start=20, end=160, fill=EYE_LIGHT, width=lw)    # lower lid
 
-    # ── Outer glow ring (final pass) ──────────────────────────────────
-    ring = Image.new("RGBA", (S, S), (0, 0, 0, 0))
-    rd   = ImageDraw.Draw(ring)
-    rim  = max(1, int(S * 0.03))
-    rd.ellipse(
-        [rim, rim, S - rim - 1, S - rim - 1],
-        outline=(110, 70, 240, 140),
-        width=max(1, int(S * 0.025)),
-    )
-    ring = ring.filter(ImageFilter.GaussianBlur(radius=max(1, S * 0.03)))
-    img  = Image.alpha_composite(img, ring)
+    # ── Iris glow + iris + pupil + highlight ─────────────────────────────
+    glow = Image.new("RGBA", (S, S), (0, 0, 0, 0))
+    gdraw = ImageDraw.Draw(glow)
+    ir = S * 0.135
+    gdraw.ellipse([cx - ir * 1.7, cy - ir * 1.7, cx + ir * 1.7, cy + ir * 1.7], fill=(*ACCENT[:3], 90))
+    glow = glow.filter(ImageFilter.GaussianBlur(S * 0.03))
+    img = Image.alpha_composite(img, glow)
+    draw = ImageDraw.Draw(img)
 
-    return img
+    draw.ellipse([cx - ir, cy - ir, cx + ir, cy + ir], fill=ACCENT, outline=ACCENT_DK, width=max(1, int(S * 0.01)))
+    pr = ir * 0.46
+    draw.ellipse([cx - pr, cy - pr, cx + pr, cy + pr], fill=(10, 10, 16, 255))  # pupil
+    hr = ir * 0.30
+    hx, hy = cx - ir * 0.38, cy - ir * 0.40
+    draw.ellipse([hx - hr, hy - hr, hx + hr, hy + hr], fill=(255, 255, 255, 220))  # highlight
+
+    return img.resize((size, size), Image.LANCZOS)
 
 
 def main():
-    import os, sys
-    out = os.path.join(os.path.dirname(__file__), "..", "resources", "icon.ico")
-    out = os.path.normpath(out)
-
-    sizes   = [256, 128, 64, 48, 32, 16]
-    images  = [draw_icon(s) for s in sizes]
-
-    # ICO needs RGB+A; PIL handles RGBA→ICO fine
-    images[0].save(
-        out,
-        format="ICO",
-        sizes=[(s, s) for s in sizes],
-        append_images=images[1:],
-    )
-    print(f"Saved {out}")
+    os.makedirs(RES, exist_ok=True)
+    sizes = [16, 24, 32, 48, 64, 128, 256]
+    imgs = [draw_icon(s) for s in sizes]
+    ico_path = os.path.join(RES, "icon.ico")
+    imgs[-1].save(ico_path, format="ICO", sizes=[(s, s) for s in sizes])
+    draw_icon(512).save(os.path.join(RES, "icon-512.png"))
+    print(f"[icon] wrote {ico_path} (sizes: {sizes}) + icon-512.png")
 
 
 if __name__ == "__main__":

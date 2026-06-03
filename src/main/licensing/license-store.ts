@@ -24,15 +24,27 @@ function trialPath(): string {
 }
 
 // ─── Trial anchors ────────────────────────────────────────────────────────────
-// The trial start is persisted in TWO independent places so that uninstalling /
-// reinstalling the app (or wiping AppData) does NOT reset the free period:
-//   1. an encrypted file under userData  (cleared by an AppData wipe)
-//   2. the Windows registry under HKCU   (survives uninstall & AppData wipe)
-// On read we take the EARLIEST timestamp found and re-seed every anchor, so a
-// single surviving anchor restores the real first-run date.
+// The trial start is persisted in FOUR independent places, in THREE different
+// persistence domains, so that uninstalling / reinstalling the app (or wiping
+// AppData, or clearing one registry key) does NOT reset the free period:
+//   1. an encrypted file under userData            (cleared by an AppData wipe)
+//   2. an encrypted file under ProgramData         (survives a user-profile/AppData wipe)
+//   3. the Windows registry HKCU\Software\EyesProRuntime  (survives uninstall + AppData wipe)
+//   4. a second registry key HKCU\Software\MasarRuntime   (redundant, different path)
+// On read we take the EARLIEST timestamp found across ALL anchors and re-seed
+// every anchor, so a single surviving anchor restores the real first-run date.
+// A user must find and clear ALL four (in three domains) to reset — impractical.
 
-const REG_KEY = 'HKCU\\Software\\EyesProRuntime';
-const REG_VAL = 'InstallTag';
+const REG_ANCHORS: { key: string; val: string }[] = [
+  { key: 'HKCU\\Software\\EyesProRuntime', val: 'InstallTag' },
+  { key: 'HKCU\\Software\\MasarRuntime', val: 'cfg' },
+];
+
+/** A machine-wide file outside the user profile — survives an AppData wipe. */
+function programDataTrialPath(): string {
+  const base = process.env.ProgramData || process.env.ALLUSERSPROFILE || 'C:\\ProgramData';
+  return path.join(base, 'EyesPro', '.syscache');
+}
 
 /** Encrypt a timestamp to a shell-safe hex string (DPAPI when available). */
 function encodeTs(ts: number): string {
@@ -73,43 +85,72 @@ function writeFileAnchor(ts: number): void {
   } catch { /* ignore */ }
 }
 
-function readRegAnchor(): number | null {
+function readProgramDataAnchor(): number | null {
   try {
-    const out = execSync(`reg query "${REG_KEY}" /v ${REG_VAL}`, {
+    const raw = fs.readFileSync(programDataTrialPath());
+    const plain = safeStorage.isEncryptionAvailable()
+      ? safeStorage.decryptString(raw)
+      : raw.toString('utf8');
+    const v = parseInt(plain, 10);
+    return !isNaN(v) && v > 0 ? v : null;
+  } catch { return null; }
+}
+function writeProgramDataAnchor(ts: number): void {
+  try {
+    const dir = path.dirname(programDataTrialPath());
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+    const buf = safeStorage.isEncryptionAvailable()
+      ? safeStorage.encryptString(String(ts))
+      : Buffer.from(String(ts), 'utf8');
+    fs.writeFileSync(programDataTrialPath(), buf);
+  } catch { /* ignore */ }
+}
+
+function readRegAnchor(key: string, val: string): number | null {
+  try {
+    const out = execSync(`reg query "${key}" /v ${val}`, {
       encoding: 'utf8', windowsHide: true, timeout: 5_000, stdio: ['ignore', 'pipe', 'ignore'],
     });
-    const m = out.match(new RegExp(`${REG_VAL}\\s+REG_SZ\\s+(\\S+)`));
+    const m = out.match(new RegExp(`${val}\\s+REG_SZ\\s+(\\S+)`));
     return m ? decodeTs(m[1]!) : null;
   } catch { return null; }
 }
-function writeRegAnchor(ts: number): void {
+function writeRegAnchor(key: string, val: string, ts: number): void {
   try {
-    execSync(`reg add "${REG_KEY}" /v ${REG_VAL} /t REG_SZ /d ${encodeTs(ts)} /f`, {
+    execSync(`reg add "${key}" /v ${val} /t REG_SZ /d ${encodeTs(ts)} /f`, {
       windowsHide: true, timeout: 5_000, stdio: 'ignore',
     });
   } catch { /* ignore */ }
 }
 
+/** Re-seed every anchor with the canonical first-run timestamp. */
+function seedAllAnchors(ts: number): void {
+  writeFileAnchor(ts);
+  writeProgramDataAnchor(ts);
+  for (const a of REG_ANCHORS) writeRegAnchor(a.key, a.val, ts);
+}
+
 /**
  * Returns the timestamp (ms) of first launch, creating it if absent.
- * Resistant to reinstall: reads file + registry anchors, uses the earliest,
- * and re-seeds both so the trial cannot be reset by reinstalling the app.
+ * Resistant to reinstall: reads all anchors (2 files + 2 registry keys across
+ * userData / ProgramData / HKCU), uses the EARLIEST, and re-seeds them all so
+ * the trial cannot be reset unless every anchor in every domain is wiped.
  */
 export function getOrCreateTrialStart(): number {
-  const anchors = [readFileAnchor(), readRegAnchor()]
-    .filter((x): x is number => typeof x === 'number' && x > 0);
+  const anchors = [
+    readFileAnchor(),
+    readProgramDataAnchor(),
+    ...REG_ANCHORS.map((a) => readRegAnchor(a.key, a.val)),
+  ].filter((x): x is number => typeof x === 'number' && x > 0);
 
   if (anchors.length > 0) {
     const earliest = Math.min(...anchors);
-    // Re-seed any anchor that was missing or held a later value.
-    writeFileAnchor(earliest);
-    writeRegAnchor(earliest);
+    seedAllAnchors(earliest); // restore any missing/tampered anchor
     return earliest;
   }
 
   const now = Date.now();
-  writeFileAnchor(now);
-  writeRegAnchor(now);
+  seedAllAnchors(now);
   return now;
 }
 
