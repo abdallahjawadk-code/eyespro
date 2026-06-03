@@ -6,11 +6,25 @@
  *
  * Supports: channel URLs, @handle URLs, and direct channel IDs.
  */
-import { fetchUrlGuarded } from '../../net/guarded-fetch';
+import { getText } from '../../net/http';
 import { withRetry } from '../../net/stealth-utils';
 import { createLogger } from '../../logger';
 
 const log = createLogger('youtube-scraper');
+
+const YT_HEADERS: Record<string, string> = {
+  'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36',
+  'Accept-Language': 'en-US,en;q=0.9',
+  // CONSENT/SOCS cookies skip YouTube's EU consent redirect that otherwise returns a
+  // non-channel page (the reason channel-ID resolution was failing).
+  Cookie: 'CONSENT=YES+1; SOCS=CAI',
+};
+
+/** Fetch a YouTube URL DIRECTLY (Tor exit nodes are blocked by YouTube) with the
+ *  consent cookie and a tight timeout. */
+function ytFetch(url: string) {
+  return getText(url, YT_HEADERS, { useProxy: false, timeout: 15_000, retries: 1, maxBytes: 4 * 1024 * 1024 });
+}
 
 export interface YoutubeVideo {
   videoId: string;
@@ -73,14 +87,17 @@ async function resolveChannelId(input: string): Promise<string | null> {
   const chanM = /youtube\.com\/channel\/(UC[\w-]+)/i.exec(url);
   if (chanM) return chanM[1];
 
-  // Handle or custom URL — fetch page and extract canonical channel ID
+  // Handle or custom URL — fetch page and extract canonical channel ID.
   try {
-    const res = await fetchUrlGuarded(url, { timeout: 15_000 });
+    const res = await ytFetch(url);
     if (!res.ok) return null;
 
-    // Look for channel ID in page meta
+    // Modern YouTube pages expose the ID as externalId/browseId/channelId or a
+    // /channel/UC… link — try all forms.
     const idM =
+      /"externalId":"(UC[\w-]+)"/.exec(res.body) ||
       /"channelId":"(UC[\w-]+)"/.exec(res.body) ||
+      /"browseId":"(UC[\w-]+)"/.exec(res.body) ||
       /\/channel\/(UC[\w-]+)/.exec(res.body) ||
       /<link rel="canonical" href="[^"]*\/channel\/(UC[\w-]+)"/.exec(res.body);
 
@@ -92,14 +109,14 @@ async function resolveChannelId(input: string): Promise<string | null> {
 
 export async function scrapeYoutubeChannel(channelInput: string, maxVideos = 30): Promise<YoutubeVideo[]> {
   const channelId = await withRetry(() => resolveChannelId(channelInput.trim()) as Promise<string | null>, {
-    maxAttempts: 3, baseDelayMs: 1000,
+    maxAttempts: 2, baseDelayMs: 500,
   });
   if (!channelId) throw new Error(`لا يمكن تحديد Channel ID من: ${channelInput}`);
 
   const feedUrl = `https://www.youtube.com/feeds/videos.xml?channel_id=${channelId}`;
   log.info(`Fetching YouTube RSS for channel: ${channelId}`);
 
-  const res = await withRetry(() => fetchUrlGuarded(feedUrl, { timeout: 15_000 }), { maxAttempts: 3, baseDelayMs: 2000 });
+  const res = await ytFetch(feedUrl);
 
   if (!res.ok) throw new Error(`YouTube RSS fetch failed: HTTP ${res.status}`);
 

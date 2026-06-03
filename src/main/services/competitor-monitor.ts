@@ -403,13 +403,24 @@ export async function checkAllMonitors(): Promise<{ checked: number; found: numb
   const monitors = listMonitors().filter((m) => m.active);
   let checked = 0;
   let found = 0;
-  for (const m of monitors) {
-    try {
-      const r = await checkMonitor(m.id);
+
+  // Check monitors concurrently (bounded). The serial loop made "check all" take the
+  // sum of every monitor's latency — dominated by slow browser-based scrapers (Facebook
+  // ~10s each). Batching cuts the wall-clock time to roughly the slowest item per batch.
+  const CONCURRENCY = 5;
+  for (let i = 0; i < monitors.length; i += CONCURRENCY) {
+    const batch = monitors.slice(i, i + CONCURRENCY);
+    const results = await Promise.all(
+      batch.map((m) =>
+        checkMonitor(m.id).then(
+          (r) => ({ ok: true, found: r.found }),
+          (e) => { log.warn(`Monitor ${m.id} check failed: ${(e as Error).message}`); return { ok: false, found: 0 }; },
+        ),
+      ),
+    );
+    for (const r of results) {
+      if (r.ok) checked++;
       found += r.found;
-      checked++;
-    } catch (e) {
-      log.warn(`Monitor ${m.id} check failed: ${(e as Error).message}`);
     }
   }
   return { checked, found };
