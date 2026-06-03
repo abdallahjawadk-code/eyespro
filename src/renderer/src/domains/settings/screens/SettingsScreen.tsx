@@ -4,6 +4,7 @@ import { useLocation } from 'react-router-dom';
 import { AiProvidersPanel } from '../components/AiProvidersPanel';
 import { OllamaEmbeddedPanel } from '../components/OllamaEmbeddedPanel';
 import { BackupPanel } from '../components/BackupPanel';
+import { UpdatePanel } from '../components/UpdatePanel';
 import { useAiSettings } from '../hooks/useAiSettings';
 import { Btn, Card, Field, Input, Msg, Panel } from '../../../ui';
 
@@ -263,11 +264,14 @@ export function SettingsScreen() {
           )}
           {tab === 'backup' && <BackupPanel />}
           {tab === 'about' && (
-            <Card title={t('settings.about')}>
-              <p style={{ margin: 0, fontSize: 14, lineHeight: 1.6, color: 'var(--t2)' }}>
-                {t('settings.aboutText')} — {window.eyespro.app.copyright()}
-              </p>
-            </Card>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+              <UpdatePanel />
+              <Card title={t('settings.about')}>
+                <p style={{ margin: 0, fontSize: 14, lineHeight: 1.6, color: 'var(--t2)' }}>
+                  {t('settings.aboutText')} — {window.eyespro.app.copyright()}
+                </p>
+              </Card>
+            </div>
           )}
         </div>
       </div>

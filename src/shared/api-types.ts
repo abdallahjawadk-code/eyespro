@@ -206,6 +206,22 @@ export interface BackupInfo {
   createdAt: string;
 }
 
+export interface UpdaterStatus {
+  currentVersion: string;
+  available: boolean;
+  version?: string;
+  downloaded: boolean;
+  checking: boolean;
+  error?: string;
+}
+
+export interface UpdaterProgress {
+  percent: number;
+  transferred: number;
+  total: number;
+  bytesPerSecond: number;
+}
+
 export interface BackupStatus {
   autoEnabled: boolean;
   lastBackupAt: string | null;
@@ -849,8 +865,8 @@ export interface EyesProApi {
     current: () => Inv<unknown>;
   };
   updater: {
-    status: () => Inv<{ available: boolean; version?: string; downloaded: boolean; error?: string }>;
-    check: () => Inv<unknown>;
+    status: () => Inv<UpdaterStatus>;
+    check: () => Inv<UpdaterStatus>;
     download: () => Inv<void>;
     install: () => Inv<void>;
   };

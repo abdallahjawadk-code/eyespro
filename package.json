@@ -25,6 +25,7 @@
     "bench": "vitest bench",
     "rebuild:native": "electron-builder install-app-deps",
     "build:win": "npm run build && node scripts/make-license-rtf.cjs && node scripts/create-installer-images.cjs && node scripts/protect-renderer.cjs && node scripts/compile-bytecode.cjs && electron-builder --win && node scripts/apply-fuses.cjs",
+    "release": "npm run build && node scripts/make-license-rtf.cjs && node scripts/create-installer-images.cjs && node scripts/protect-renderer.cjs && node scripts/compile-bytecode.cjs && electron-builder --win --publish always",
     "build:win:dir": "npm run build && node scripts/make-license-rtf.cjs && node scripts/create-installer-images.cjs && node scripts/protect-renderer.cjs && node scripts/compile-bytecode.cjs && electron-builder --win --dir && node scripts/apply-fuses.cjs",
     "build:win:fast": "npm run build && electron-builder --win --dir",
     "build:secure": "npm run build:obf && npm run build:pack:secure",
@@ -93,6 +94,13 @@
     "appId": "com.abdallahjk.eyespro",
     "productName": "EyesPro",
     "copyright": "Copyright © Abdallahjk",
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "Abdallahjk",
+        "repo": "eyespro"
+      }
+    ],
     "directories": {
       "output": "release",
       "buildResources": "resources"
