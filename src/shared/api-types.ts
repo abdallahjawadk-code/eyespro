@@ -211,10 +211,14 @@ export interface AssistantResult {
   reply: string;
   tool: string;
   data?: unknown;
+  navigate?: string;
   needsConfirm?: boolean;
   pendingArgs?: Record<string, unknown>;
   error?: string;
 }
+
+export interface AssistantSuggestion { text: string; command?: string }
+export interface AssistantSuggestions { greeting: string; suggestions: AssistantSuggestion[] }
 
 export interface UpdaterStatus {
   currentVersion: string;
@@ -882,6 +886,7 @@ export interface EyesProApi {
   };
   assistant: {
     command: (command: string, confirmed?: boolean) => Inv<AssistantResult>;
+    suggest: () => Inv<AssistantSuggestions>;
   };
   app: { copyright: () => string };
   translation: {

@@ -346,7 +346,8 @@ const api: EyesProApi = {
     install: () => invoke('updater:install')
   },
   assistant: {
-    command: (command: string, confirmed?: boolean) => invoke('assistant:command', command, confirmed)
+    command: (command: string, confirmed?: boolean) => invoke('assistant:command', command, confirmed),
+    suggest: () => invoke('assistant:suggest')
   },
   translation: {
     text: (text: string, targetLang: string, backend?: string) => invoke('translation:text', text, targetLang, backend),

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import type { AssistantResult } from '../../../../shared/api-types';
+import { useNavigate } from 'react-router-dom';
+import type { AssistantResult, AssistantSuggestion } from '../../../../shared/api-types';
 import './assistant.css';
 
 type RobotState = 'idle' | 'thinking' | 'executing' | 'done' | 'error';
@@ -31,17 +32,32 @@ function DataPreview({ data }: { data: unknown }) {
 
 export function Assistant() {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const [open, setOpen] = useState(false);
   const [state, setState] = useState<RobotState>('idle');
   const [input, setInput] = useState('');
   const [busy, setBusy] = useState(false);
   const [pending, setPending] = useState<{ command: string } | null>(null);
+  const [suggestions, setSuggestions] = useState<AssistantSuggestion[]>([]);
+  const [greeted, setGreeted] = useState(false);
   const [msgs, setMsgs] = useState<Msg[]>([
     { who: 'bot', text: t('assistant.greeting', { defaultValue: 'مرحباً! أنا مساعدك الذكي. اكتب ما تريد تنفيذه.' }) },
   ]);
   const bodyRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => { bodyRef.current?.scrollTo({ top: bodyRef.current.scrollHeight, behavior: 'smooth' }); }, [msgs, state]);
+  useEffect(() => { bodyRef.current?.scrollTo({ top: bodyRef.current.scrollHeight, behavior: 'smooth' }); }, [msgs, state, suggestions]);
+
+  // Load proactive suggestions the first time the panel opens.
+  useEffect(() => {
+    if (!open || greeted) return;
+    setGreeted(true);
+    window.eyespro.assistant.suggest().then((r) => {
+      if (r.ok && r.data) {
+        setMsgs([{ who: 'bot', text: r.data.greeting }]);
+        setSuggestions(r.data.suggestions ?? []);
+      }
+    }).catch(() => undefined);
+  }, [open, greeted]);
 
   async function send(command: string, confirmed = false) {
     if (!command.trim() || busy) return;
@@ -63,6 +79,7 @@ export function Assistant() {
         setMsgs((m) => [...m, { who: 'bot', text: res.reply, err: !res.ok, data: res.data }]);
         setState(res.ok ? 'done' : 'error');
         setTimeout(() => setState('idle'), 1600);
+        if (res.navigate) { try { navigate(res.navigate); } catch { /* ignore */ } }
       }
     } catch (e) {
       setMsgs((m) => [...m, { who: 'bot', text: String((e as Error).message), err: true }]);
@@ -77,7 +94,14 @@ export function Assistant() {
     const c = input.trim();
     if (!c) return;
     setInput('');
+    setSuggestions([]);
     void send(c);
+  }
+
+  function runSuggestion(s: AssistantSuggestion) {
+    if (!s.command) return;
+    setSuggestions([]);
+    void send(s.command);
   }
 
   return (
@@ -115,6 +139,20 @@ export function Assistant() {
                 {m.who === 'bot' && <DataPreview data={m.data} />}
               </div>
             ))}
+            {suggestions.length > 0 && !busy && (
+              <div className="asst-suggests">
+                {suggestions.map((s, i) => (
+                  <button
+                    key={i}
+                    className={`asst-suggest${s.command ? ' clickable' : ''}`}
+                    onClick={() => runSuggestion(s)}
+                    disabled={!s.command}
+                  >
+                    {s.text}
+                  </button>
+                ))}
+              </div>
+            )}
             {pending && (
               <div className="asst-confirm">
                 <button className="asst-btn" onClick={() => void send(pending.command, true)}>

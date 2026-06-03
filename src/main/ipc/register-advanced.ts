@@ -701,6 +701,14 @@ export function registerAdvancedHandlers(ipcMain: IpcMain, getWin: () => Browser
     } catch (e) { return { ok: false, error: (e as Error).message }; }
   });
 
+  // Proactive suggestions based on current app state (shown when the robot opens).
+  ipcMain.handle('assistant:suggest', async () => {
+    try {
+      const { getSuggestions } = await import('../services/assistant');
+      return ok(getSuggestions());
+    } catch (e) { return { ok: false, error: (e as Error).message }; }
+  });
+
   ipcMain.handle('downloader:delete', async (_e, filePath: string) => {
     try {
       const fs = await import('node:fs/promises');

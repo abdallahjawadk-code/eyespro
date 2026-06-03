@@ -1275,4 +1275,22 @@ export function runMigrations(db: Database.Database): void {
       }
     }
   });
+
+  // v52 — AI Assistant local memory. Stores the user's past commands and which
+  // tool ran, used purely on-device to (a) give the model few-shot examples of
+  // THIS user's phrasing (cumulative learning) and (b) power proactive
+  // suggestions. Never leaves the machine.
+  migrateTo(db, 52, () => {
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS assistant_memory (
+        id         INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id    INTEGER,
+        command    TEXT NOT NULL,
+        tool       TEXT NOT NULL,
+        success    INTEGER NOT NULL DEFAULT 1,
+        created_at TEXT NOT NULL DEFAULT (datetime('now'))
+      );
+    `);
+    db.exec(`CREATE INDEX IF NOT EXISTS idx_assistant_memory_tool ON assistant_memory(tool, success);`);
+  });
 }
