@@ -6,7 +6,11 @@
     "send": "تنفيذ",
     "thinking": "أفكّر…",
     "executing": "أنفّذ…",
-    "confirm": "تأكيد التنفيذ"
+    "confirm": "تأكيد التنفيذ",
+    "speak": "تكلّم",
+    "listening": "أستمع إليك…",
+    "voiceOn": "تفعيل الصوت",
+    "voiceOff": "كتم الصوت"
   },
   "updater": {
     "title": "تحديثات التطبيق",

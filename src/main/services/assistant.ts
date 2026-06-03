@@ -13,11 +13,14 @@
  */
 import { runAiChain, checkAiProviderReady, resolveEffectiveAiProvider } from './ai';
 import { dashboardMetrics } from './analytics';
-import { listArticles, searchArticles, createArticle } from './articles';
+import { listArticles, searchArticles, createArticle, getArticle } from './articles';
 import { listTrends, fetchAllSources } from './trend-radar';
 import { listSources, fetchAllEnabled } from './sources';
 import { listMonitors, checkAllMonitors } from './competitor-monitor';
 import { runAutopilotOnce } from './autopilot-loop';
+import { generateArticle } from './ai-generator';
+import { publishOne } from './publish';
+import { setSetting } from './settings';
 import { getDb } from '../db/database';
 import { createLogger } from '../logger';
 
@@ -127,6 +130,36 @@ const TOOLS: ToolDef[] = [
   { name: 'run_newsroom', desc: 'تشغيل غرفة الأخبار: جلب ترندات وتوليد مقالات (يحتاج ذكاء اصطناعي).', sensitive: true, run: async () => {
     const r = await runAutopilotOnce();
     return { summary: `اكتملت غرفة الأخبار: وُلِّد ${r.generated} مقالاً من ${r.processed} ترند${r.errors.length ? ` (${r.errors.length} خطأ)` : ''}.`, data: { generated: r.generated, processed: r.processed, articleIds: r.articleIds } };
+  } },
+  { name: 'write_article', desc: 'كتابة مقال كامل عن موضوع بالذكاء الاصطناعي وحفظه مسودّة. args:{topic}', sensitive: true, run: async (a) => {
+    const topic = String(a.topic ?? '').trim();
+    if (!topic) return { summary: 'حدّد موضوع المقال الذي تريد كتابته.' };
+    const r = await generateArticle(topic);
+    if (!r.ok) return { summary: `تعذّرت الكتابة: ${r.error}` };
+    return { summary: `كتبتُ مقالاً عن «${topic}»: «${r.title}» (رقم ${r.articleId}). تجده في المسودّات.`, data: { id: r.articleId, title: r.title } };
+  } },
+  { name: 'publish_article', desc: 'نشر مقال على منصّة. args:{platform, articleId?} — يُنشر أحدث مقال إن لم تحدّد رقماً.', sensitive: true, run: async (a) => {
+    const platform = String(a.platform ?? '').toLowerCase().trim();
+    if (!platform) return { summary: 'حدّد المنصّة (telegram/facebook/twitter/...).' };
+    let id = Number(a.articleId) || 0;
+    if (!id) id = (listArticles({ limit: 1 })[0] as { id?: number } | undefined)?.id ?? 0;
+    if (!id) return { summary: 'لا يوجد مقال للنشر.' };
+    const art = getArticle(id) as { title?: string; summary?: string; content?: string } | undefined;
+    if (!art) return { summary: `لم أجد المقال رقم ${id}.` };
+    const text = `${art.title ?? ''}\n\n${art.summary || art.content || ''}`.slice(0, 4000).trim();
+    const out = await publishOne({ articleId: id, platform, text });
+    return { summary: out.ok ? `نُشِر المقال «${art.title}» على ${platform}. ${out.postUrl ?? ''}` : `فشل النشر على ${platform}: ${out.error}`, data: out };
+  } },
+  { name: 'set_ai_provider', desc: 'تعيين مزوّد الذكاء الاصطناعي الافتراضي. args:{provider} مثل ollama/gemini/openai/groq/anthropic/off', sensitive: true, run: async (a) => {
+    const p = String(a.provider ?? '').toLowerCase().trim();
+    if (!['ollama', 'gemini', 'openai', 'groq', 'anthropic', 'off'].includes(p)) return { summary: 'مزوّد غير معروف. الخيارات: ollama, gemini, openai, groq, anthropic, off.' };
+    setSetting('ai_provider', p);
+    return { summary: p === 'off' ? 'أوقفتُ الذكاء الاصطناعي.' : `عيّنتُ مزوّد الذكاء الاصطناعي الافتراضي إلى ${p}.`, data: { provider: p } };
+  } },
+  { name: 'set_language', desc: 'تغيير لغة الواجهة. args:{lang} ar أو en', run: async (a) => {
+    const l = String(a.lang ?? '').toLowerCase().startsWith('en') ? 'en' : 'ar';
+    setSetting('ui_language', l);
+    return { summary: l === 'en' ? 'Set UI language to English (reopen to apply).' : 'غيّرتُ لغة الواجهة إلى العربية (أعد الفتح للتطبيق الكامل).', data: { lang: l } };
   } },
 ];
 
