@@ -184,13 +184,27 @@ async function scrapeViaBrowser(handle: string): Promise<Tweet[]> {
       void win!.webContents.executeJavaScript(stealthScript).catch(() => { /* non-fatal */ });
     });
 
-    await Promise.race([
-      new Promise<void>((res, rej) => {
-        const t = setTimeout(() => rej(new Error('Twitter load timeout')), LOAD_TIMEOUT);
-        win!.webContents.once('did-finish-load', () => { clearTimeout(t); res(); });
-      }),
-      win.loadURL(url),
-    ]);
+    let loadTimeout: NodeJS.Timeout | undefined;
+    try {
+      await Promise.race([
+        new Promise<void>((res, rej) => {
+          loadTimeout = setTimeout(() => rej(new Error('Twitter load timeout')), LOAD_TIMEOUT);
+          win!.webContents.once('did-finish-load', () => {
+            if (loadTimeout) {
+              clearTimeout(loadTimeout);
+              loadTimeout = undefined;
+            }
+            res();
+          });
+        }),
+        win.loadURL(url),
+      ]);
+    } finally {
+      if (loadTimeout) {
+        clearTimeout(loadTimeout);
+        loadTimeout = undefined;
+      }
+    }
 
     await randomDelay(3500, 5500); // human-like random delay
     await win.webContents.executeJavaScript('window.scrollBy(0, 1200)');

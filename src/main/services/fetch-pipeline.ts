@@ -146,7 +146,7 @@ async function securityScanUrl(url: string, context: 'ingest' | 'source'): Promi
 
 export async function fetchPageHtml(
   url: string,
-  opts?: { forceBrowser?: boolean; selector?: string; sourceId?: number; timeout?: number }
+  opts?: { forceBrowser?: boolean; selector?: string; sourceId?: number; timeout?: number; skipAudit?: boolean }
 ): Promise<{ ok: boolean; html?: string; method: FetchMethod; status: number; error?: string; bytes: number }> {
   const started = Date.now();
   let host = '';
@@ -161,17 +161,19 @@ export async function fetchPageHtml(
   const bytes = res.body?.length ?? 0;
   const method: FetchMethod = forceBrowser ? 'browser' : 'http';
 
-  logFetchAudit({
-    sourceId: opts?.sourceId,
-    url,
-    finalUrl: url,
-    method,
-    statusCode: res.status,
-    durationMs: Date.now() - started,
-    bytesRead: bytes,
-    ok: res.ok,
-    error: res.ok ? undefined : res.body?.slice(0, 200)
-  });
+  if (!opts?.skipAudit) {
+    logFetchAudit({
+      sourceId: opts?.sourceId,
+      url,
+      finalUrl: url,
+      method,
+      statusCode: res.status,
+      durationMs: Date.now() - started,
+      bytesRead: bytes,
+      ok: res.ok,
+      error: res.ok ? undefined : res.body?.slice(0, 200)
+    });
+  }
 
   if (!res.ok) return { ok: false, method, status: res.status, error: res.body?.slice(0, 200), bytes };
   return { ok: true, html: res.body, method, status: res.status, bytes };
@@ -223,7 +225,7 @@ export async function fetchArticlePage(opts: {
   }
 
   const forceBrowser = mode === 'browser' || shouldForceBrowser(new URL(finalUrl).hostname);
-  const page = await fetchPageHtml(finalUrl, { forceBrowser, selector: opts.selector, sourceId: opts.sourceId });
+  const page = await fetchPageHtml(finalUrl, { forceBrowser, selector: opts.selector, sourceId: opts.sourceId, skipAudit: true });
 
   if (!page.ok || !page.html) {
     const auditId = logFetchAudit({

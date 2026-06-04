@@ -5,7 +5,6 @@ import { initDatabase, shutdownDatabase } from './db/database';
 import { registerIpcHandlers } from './ipc/register-handlers';
 import { createMainWindow } from './window';
 import { scheduleDailyBackups, applyPendingRestoreIfAny } from './services/backup';
-import { startScheduler } from './services/scheduler';
 import { processPendingJobs } from './services/ai';
 import { runAlertCheck } from './services/analytics';
 import { loadActiveTenant } from './services/tenant';
@@ -93,7 +92,7 @@ app.whenReady().then(() => {
   if (getSetting('auto_login') !== '0') autoBindAdminSession(mainWindow.webContents);
   registerIpcHandlers(ipcMain, () => mainWindow);
   scheduleDailyBackups();
-  startScheduler();
+  // startScheduler(); // Disabled by user request
   setInterval(() => void processPendingJobs(3), 30_000);
   setInterval(() => void processPipelineJobs(), 30_000);
   setInterval(() => runAlertCheck(), 6 * 60 * 60 * 1000);

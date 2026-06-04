@@ -14,7 +14,6 @@ const SettingsDomain = lazy(() => import('../domains/settings').then((m) => ({ d
 const ArticleEditorScreen = lazy(() => import('../domains/articles').then((m) => ({ default: m.ArticleEditorScreen })));
 const MonitorDomain = lazy(() => import('../domains/monitor').then((m) => ({ default: m.MonitorDomain })));
 const SocialVideoDomain = lazy(() => import('../domains/social-video').then((m) => ({ default: m.SocialVideoDomain })));
-const ScheduleDomain = lazy(() => import('../domains/schedule').then((m) => ({ default: m.ScheduleDomain })));
 
 function PageLoader() {
   const { t } = useTranslation();
@@ -47,7 +46,7 @@ export function AppRoutes() {
         <Route path="articles/:id" element={<Lazy><ArticleEditorScreen /></Lazy>} />
         <Route path="articles" element={<Lazy><ArticlesDomain /></Lazy>} />
         <Route path="autopilot" element={<Lazy><AutopilotScreen /></Lazy>} />
-        <Route path="schedule" element={<Lazy><ScheduleDomain /></Lazy>} />
+        <Route path="schedule" element={<Navigate to="/dashboard" replace />} />
         <Route path="sentiment" element={<Navigate to="/articles" replace />} />
 
         <Route path="insights" element={<Lazy><InsightsDomain /></Lazy>} />
@@ -79,8 +78,8 @@ export function AppRoutes() {
         <Route path="keywords" element={<Navigate to="/insights?tab=keywords" replace />} />
         <Route path="health" element={<Navigate to="/insights?tab=health" replace />} />
         <Route path="publish-tracker" element={<Navigate to="/insights?tab=tracker" replace />} />
-        <Route path="calendar" element={<Navigate to="/schedule?tab=calendar" replace />} />
-        <Route path="scheduler" element={<Navigate to="/schedule?tab=scheduler" replace />} />
+        <Route path="calendar" element={<Navigate to="/dashboard" replace />} />
+        <Route path="scheduler" element={<Navigate to="/dashboard" replace />} />
         <Route path="kanban" element={<Navigate to="/articles" replace />} />
         <Route path="publish-articles" element={<Navigate to="/articles" replace />} />
       </Route>

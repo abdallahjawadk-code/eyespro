@@ -63,7 +63,6 @@ export function DashboardScreen() {
   const hubs = useMemo(() => [
     { to: '/content', icon: '📦', title: t('nav.contentHub'), desc: t('dashboard.hubs.content'), accent: '#38bdf8' },
     { to: '/articles', icon: '📝', title: t('nav.articlesContent'), desc: t('dashboard.hubs.articles'), accent: 'var(--acc)' },
-    { to: '/schedule', icon: '⏰', title: t('nav.scheduledTasks'), desc: t('dashboard.hubs.schedule'), accent: '#eab308' },
     { to: '/insights', icon: '📈', title: t('nav.insightsHub'), desc: t('dashboard.hubs.insights'), accent: '#38bdf8' },
     { to: '/settings', icon: '⚙️', title: t('nav.settings'), desc: t('dashboard.hubs.settings'), accent: '#64748b' },
   ], [t]);

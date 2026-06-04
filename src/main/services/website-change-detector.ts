@@ -12,6 +12,8 @@
  */
 import crypto from 'node:crypto';
 import * as cheerio from 'cheerio';
+import type { Cheerio } from 'cheerio';
+import type { AnyNode } from 'domhandler';
 import { getDb } from '../db/database';
 
 import { fetchPageHtml } from './fetch-pipeline';
@@ -70,7 +72,7 @@ export function extractMainArticleContent(html: string): string {
     // Remove common sidebar, menu, ad and footer classes/ids
     $('.sidebar, #sidebar, .menu, #menu, .nav, #nav, .footer, #footer, .header, #header, .ads, .ad, #ads, .comments, #comments, .related, .share-buttons').remove();
 
-    let bestContainer: any = null;
+    let bestContainer: Cheerio<AnyNode> | null = null;
     let maxScore = 0;
 
     // 2. Look for standard article container tags first
@@ -82,7 +84,9 @@ export function extractMainArticleContent(html: string): string {
     for (const selector of standardSelectors) {
       const el = $(selector);
       if (el.length > 0) {
-        el.each((_, item) => {
+        for (let i = 0; i < el.length; i++) {
+          const item = el[i];
+          if (!item) continue;
           const textLength = $(item).text().trim().length;
           // Simple scoring: text length + weighting standard containers
           const score = textLength * 1.5;
@@ -90,13 +94,16 @@ export function extractMainArticleContent(html: string): string {
             maxScore = score;
             bestContainer = $(item);
           }
-        });
+        }
       }
     }
 
     // 3. If standard elements don't give a clear winner, use density scoring on divs
     if (maxScore < 200) {
-      $('div, section').each((_, item) => {
+      const divs = $('div, section');
+      for (let i = 0; i < divs.length; i++) {
+        const item = divs[i];
+        if (!item) continue;
         const div = $(item);
         
         // Count paragraphs in this specific container
@@ -110,17 +117,20 @@ export function extractMainArticleContent(html: string): string {
           maxScore = score;
           bestContainer = div;
         }
-      });
+      }
     }
 
     if (bestContainer && maxScore > 100) {
       // Extract clean text from the best container
       // Map paragraphs/headers to maintain some structural spacing
       const blocks: string[] = [];
-      bestContainer.find('p, h1, h2, h3, h4, li').each((_: any, el: any) => {
+      const subElements = bestContainer.find('p, h1, h2, h3, h4, li');
+      for (let i = 0; i < subElements.length; i++) {
+        const el = subElements[i];
+        if (!el) continue;
         const txt = $(el).text().trim();
         if (txt) blocks.push(txt);
-      });
+      }
 
       if (blocks.length > 0) {
         return blocks.join('\n\n');

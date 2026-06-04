@@ -93,13 +93,27 @@ async function _scrapeIg(username: string): Promise<InstagramPost[]> {
       void win!.webContents.executeJavaScript(buildStealthScript(fp)).catch(() => { /* non-fatal */ });
     });
 
-    await Promise.race([
-      new Promise<void>((res, rej) => {
-        const t = setTimeout(() => rej(new Error('Instagram load timeout')), LOAD_TIMEOUT);
-        win!.webContents.once('did-finish-load', () => { clearTimeout(t); res(); });
-      }),
-      win.loadURL(url),
-    ]);
+    let loadTimeout: NodeJS.Timeout | undefined;
+    try {
+      await Promise.race([
+        new Promise<void>((res, rej) => {
+          loadTimeout = setTimeout(() => rej(new Error('Instagram load timeout')), LOAD_TIMEOUT);
+          win!.webContents.once('did-finish-load', () => {
+            if (loadTimeout) {
+              clearTimeout(loadTimeout);
+              loadTimeout = undefined;
+            }
+            res();
+          });
+        }),
+        win.loadURL(url),
+      ]);
+    } finally {
+      if (loadTimeout) {
+        clearTimeout(loadTimeout);
+        loadTimeout = undefined;
+      }
+    }
 
     await randomDelay(4000, 6000);
     await win.webContents.executeJavaScript('window.scrollBy(0, 1500)');

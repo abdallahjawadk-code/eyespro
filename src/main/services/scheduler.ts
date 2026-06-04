@@ -92,11 +92,8 @@ let interval: ReturnType<typeof setInterval> | null = null;
 let lastAutoFetch = 0;
 
 export function startScheduler(): void {
-  if (interval) clearInterval(interval);
-  interval = setInterval(() => {
-    void tick();
-  }, 60_000);
-  log.info('scheduler started');
+  log.info('scheduler is disabled by user request');
+  return;
 }
 
 export function stopScheduler(): void {
@@ -104,7 +101,7 @@ export function stopScheduler(): void {
   interval = null;
 }
 
-async function tick(): Promise<void> {
+export async function tick(): Promise<void> {
   try {
     const nowStr = new Date().toISOString().slice(0, 16);
     const due = getDb()
@@ -160,6 +157,18 @@ async function tick(): Promise<void> {
       lastLinkHealthRun = Date.now();
       void runPeriodicLinkHealth(10).catch(() => undefined);
     }
+
+    // Periodic autonomous reflection check (every 24 hours)
+    try {
+      const { getSetting, setSetting } = await import('./settings');
+      const lastReflection = getSetting('last_autonomous_reflection');
+      const oneDay = 24 * 3600 * 1000;
+      if (!lastReflection || (Date.now() - new Date(lastReflection).getTime() > oneDay)) {
+        setSetting('last_autonomous_reflection', new Date().toISOString());
+        const { runAutonomousReflection, runAutonomousSourceDiscovery } = await import('./assistant');
+        void runAutonomousReflection().then(() => runAutonomousSourceDiscovery()).catch(() => {});
+      }
+    } catch { /* non-fatal dynamic import */ }
   } catch (e) {
     log.error('scheduler tick', { error: (e as Error).message });
   }

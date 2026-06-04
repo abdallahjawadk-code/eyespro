@@ -34,8 +34,21 @@ export function registerArticlesHandlers(ipcMain: IpcMain, getWin: () => Browser
   ipcMain.handle('articles:categories', () => ok(articles.listCategories()));
   ipcMain.handle('articles:get',    (_e, id: number) => ok(articles.getArticle(sanitizeInt(id, 1))));
   ipcMain.handle('articles:create', (_e, data) => ok({ id: articles.createArticle(data || {}) }));
-  ipcMain.handle('articles:update', (_e, id: number, data) => {
-    const r = articles.updateArticle(sanitizeInt(id, 1), data || {});
+  ipcMain.handle('articles:update', async (_e, id: number, data) => {
+    const safeId = sanitizeInt(id, 1);
+    const oldArticle = articles.getArticle(safeId);
+    const r = articles.updateArticle(safeId, data || {});
+    if (r && oldArticle && data) {
+      const updatedArticle = articles.getArticle(safeId);
+      if (updatedArticle) {
+        import('../../services/assistant').then(m => {
+          void m.triggerSelfLearning(
+            oldArticle.title, oldArticle.content || '',
+            updatedArticle.title, updatedArticle.content || ''
+          ).catch(() => {});
+        }).catch(() => {});
+      }
+    }
     return r ? ok(undefined) : { ok: false, error: 'Not found', code: 'NOT_FOUND' };
   });
   ipcMain.handle('articles:delete', (_e, id: number) => {

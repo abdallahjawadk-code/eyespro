@@ -2,7 +2,6 @@
 export { DashboardDomain } from './dashboard';
 export { ContentDomain } from './content';
 export { ArticlesDomain, ArticleEditorScreen } from './articles';
-export { ScheduleDomain } from './schedule';
 export { InsightsDomain } from './insights';
 export { SystemDomain } from './system';
 export { SettingsDomain } from './settings';

@@ -24,14 +24,22 @@ export { getDbPath, getDbWorkingPath };
 const SQLITE_MAGIC = Buffer.from('SQLite format 3\0');
 
 function isValidSqliteFile(filePath: string): boolean {
+  let fd: number | null = null;
   try {
-    const fd = fs.openSync(filePath, 'r');
+    fd = fs.openSync(filePath, 'r');
     const head = Buffer.alloc(16);
     const read = fs.readSync(fd, head, 0, 16, 0);
-    fs.closeSync(fd);
     return read === 16 && head.equals(SQLITE_MAGIC);
   } catch {
     return false;
+  } finally {
+    if (fd !== null) {
+      try {
+        fs.closeSync(fd);
+      } catch {
+        /* ignore */
+      }
+    }
   }
 }
 

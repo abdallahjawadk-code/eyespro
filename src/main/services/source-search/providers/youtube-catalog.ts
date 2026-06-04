@@ -34,7 +34,7 @@ export function runYoutubeCatalog(
     if (sector !== 'all' && !ch.sectors.includes(sector) && !ch.sectors.includes('all')) continue;
     const hay = `${ch.name} ${ch.tags.join(' ')}`.toLowerCase();
     if (ql && !hay.includes(ql) && !ch.tags.some((t) => ql.includes(t.toLowerCase()))) {
-      if (sector === 'all') continue;
+      continue;
     }
     add({
       title: `YouTube — ${ch.name}`,

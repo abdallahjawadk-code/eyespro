@@ -23,7 +23,6 @@ export const NAV_GROUPS: NavGroup[] = [
       { to: '/content', key: 'nav.contentHub', ico: '📦' },
       { to: '/articles', key: 'nav.articlesContent', ico: '📝' },
       { to: '/autopilot', key: 'nav.autopilot', ico: '🤖' },
-      { to: '/schedule', key: 'nav.scheduledTasks', ico: '⏰' },
     ],
   },
   {
@@ -52,7 +51,6 @@ export const PAGE_TITLES: Record<string, string> = {
   '/trends': 'nav.trendRadar',
   '/articles': 'nav.articlesContent',
   '/autopilot': 'nav.autopilot',
-  '/schedule': 'nav.scheduledTasks',
   '/production': 'nav.articlesContent',
   '/pipeline': 'nav.articlesContent',
   '/editorial-publish': 'nav.articlesContent',
@@ -92,7 +90,6 @@ export const COMMAND_ENTRIES: CommandEntry[] = [
   { icon: '🖼️', labelKey: 'nav.media', to: '/content?tab=media', groupKey: 'nav.groupWorkflow' },
   { icon: '📝', labelKey: 'nav.articlesContent', to: '/articles', groupKey: 'nav.groupWorkflow' },
   { icon: '🤖', labelKey: 'nav.autopilot', to: '/autopilot', groupKey: 'nav.groupWorkflow' },
-  { icon: '⏰', labelKey: 'nav.scheduledTasks', to: '/schedule', groupKey: 'nav.groupWorkflow' },
   { icon: '✏️', labelKey: 'articles.new', to: '/articles/new', groupKey: 'nav.groupWorkflow' },
   { icon: '📊', labelKey: 'nav.insightsHub', to: '/insights', groupKey: 'nav.groupInsights' },
   { icon: '✨', labelKey: 'nav.quality', to: '/insights?tab=quality', groupKey: 'nav.groupInsights' },

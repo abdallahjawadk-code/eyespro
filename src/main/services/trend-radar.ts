@@ -707,8 +707,8 @@ export async function fetchFromSource(sourceId: number): Promise<{ ok: boolean; 
 
     const db = getDb();
     const insertTrend = db.prepare(`
-      INSERT OR IGNORE INTO trends (title, region, source, traffic, description, status)
-      VALUES (?, ?, ?, ?, ?, 'pending')
+      INSERT OR IGNORE INTO trends (title, region, source, traffic, description, status, quality_score)
+      VALUES (?, ?, ?, ?, ?, 'pending', ?)
     `);
 
     // Full-content enrichment fetches a whole article page PER item — the dominant
@@ -727,13 +727,21 @@ export async function fetchFromSource(sourceId: number): Promise<{ ok: boolean; 
     for (let i = 0; i < trends.length; i++) {
       const trend = trends[i]!;
       const description = enriched[i] ?? trend.description ?? null;
+      
+      const qualityScore = calculateTrendQuality({
+        title: trend.title,
+        description,
+        traffic: trend.traffic,
+        source: src.name
+      });
 
       const r = insertTrend.run(
         sanitizeString(trend.title, 200),
         sanitizeString(src.region_tag, 20),
         sanitizeString(src.name, 120),
         trend.traffic ? sanitizeString(trend.traffic, 32) : null,
-        description  ? sanitizeString(description, 2000) : null
+        description  ? sanitizeString(description, 2000) : null,
+        qualityScore
       );
       if (r.changes > 0) inserted++;
     }

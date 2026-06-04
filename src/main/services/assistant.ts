@@ -16,7 +16,8 @@ import { dashboardMetrics } from './analytics';
 import { listArticles, searchArticles, createArticle, getArticle } from './articles';
 import { listTrends, fetchAllSources } from './trend-radar';
 import { listSources, fetchAllEnabled } from './sources';
-import { listMonitors, checkAllMonitors } from './competitor-monitor';
+import { listMonitors, checkAllMonitors, groupSnapshotsIntoSemanticClusters, synthesizeArticleFromSnapshots } from './competitor-monitor';
+import { scrapeGoogleNews } from './scrapers/google-news-scraper';
 import { runAutopilotOnce } from './autopilot-loop';
 import { generateArticle } from './ai-generator';
 import { publishOne } from './publish';
@@ -182,6 +183,31 @@ const TOOLS: ToolDef[] = [
     );
     return { summary: answer.trim() || 'لم أجد إجابة في بياناتك.', data: { grounded: true } };
   } },
+  { name: 'get_semantic_clusters', desc: 'عرض الأخبار المتشابهة والمجمعة دلالياً للمنافسين ومقارنة الفروق بينها.', run: async () => {
+    const clusters = await groupSnapshotsIntoSemanticClusters();
+    const rows = clusters.map(c => ({
+      clusterId: c.clusterId,
+      mainTitle: c.main.title,
+      duplicatesCount: c.duplicates.length,
+      diffSummary: c.diffSummary
+    }));
+    return { summary: `وجدتُ ${clusters.length} مجموعة إخبارية مجمعة دلالياً.`, data: rows };
+  } },
+  { name: 'synthesize_news', desc: 'دمج وتوليف مقال صحفي مدمج من عدة معرّفاتsnapshots للمنافسين. args:{snapshotIds: [number, number, ...]}', sensitive: true, run: async (a) => {
+    let ids: number[] = [];
+    if (Array.isArray(a.snapshotIds)) {
+      ids = a.snapshotIds.map(Number).filter(Boolean);
+    } else if (typeof a.snapshotIds === 'string') {
+      ids = a.snapshotIds.split(',').map(Number).filter(Boolean);
+    }
+    if (!ids.length) return { summary: 'لم يتم تحديد معرّفات اللقطات الإخبارية للدمج.' };
+    const articleId = await synthesizeArticleFromSnapshots(ids);
+    return { summary: `تم بنجاح توليف ودمج الأخبار في مسودة مقال جديدة (رقم ${articleId}) تجدها في المسودات.`, data: { id: articleId } };
+  } },
+  { name: 'list_recommended_sources', desc: 'عرض مصادر الأخبار المقترحة تلقائياً التي اكتشفها المساعد.', run: async () => {
+    const recs = listFacts().filter(x => x.content.includes('مصدر مقترح:')).map(x => ({ id: x.id, content: x.content }));
+    return { summary: recs.length ? `وجدتُ ${recs.length} مصدراً مقترحاً لك.` : 'لم يتم اكتشاف مصادر مقترحة جديدة بعد.', data: recs };
+  } },
 ];
 
 // ── local memory (few-shot learning, on-device only) ──────────────────────────
@@ -322,4 +348,147 @@ export function getSuggestions(): { greeting: string; suggestions: AssistantSugg
     greeting: 'مرحباً! أنا مساعدك الذكي 🤖 — مرّر أوامرك بالكلام وسأنفّذها. هذه بعض الاقتراحات:',
     suggestions: s.slice(0, 4),
   };
+}
+
+export async function triggerSelfLearning(
+  oldTitle: string,
+  oldContent: string,
+  newTitle: string,
+  newContent: string
+): Promise<void> {
+  const provider = resolveEffectiveAiProvider();
+  if (provider === 'unconfigured' || provider === 'off') return;
+
+  // Only reflect if there is a substantial edit (different titles, or content changes)
+  if (oldTitle === newTitle && oldContent.trim() === newContent.trim()) return;
+
+  try {
+    const prompt = `أنت خبير في فهم تفضيلات الكتابة وصناعة المحتوى. قام الكاتب بتعديل عنوان المقال ونصه. قارن بين النسخة القديمة والجديدة واستخلص تفضيلاً محدداً وصغيراً جداً عن أسلوب صياغة الكاتب المفضل باللغة العربية (مثال: 'يفضل العناوين المباشرة والموجزة' أو 'يتجنب تكرار الكلمات الطويلة' أو 'يفضل النبرة الرسمية'). أعد فقط التفضيل كجملة واحدة باللغة العربية تبدأ بـ 'يفضل...'، وإذا لم يكن هناك نمط واضح أعد 'لا يوجد':
+    
+القديم:
+العنوان: ${oldTitle}
+النص: ${oldContent.slice(0, 1000)}
+
+الجديد:
+العنوان: ${newTitle}
+النص: ${newContent.slice(0, 1000)}`;
+
+    log.info('Triggering autonomous self-learning from user edit...');
+    const result = await runAiChain(prompt, '');
+    const preference = result.trim();
+    if (preference && preference.length > 5 && !preference.includes('لا يوجد') && preference.startsWith('يفضل')) {
+      // Check if we already have this fact to avoid duplicates
+      const existing = listFacts();
+      if (!existing.some(f => f.content.includes(preference.slice(0, 30)))) {
+        rememberFact(preference, 'auto_learned');
+        log.info(`[Self-Learning] Learned new preference: ${preference}`);
+      }
+    }
+  } catch (err) {
+    log.warn(`Self-learning failed: ${(err as Error).message}`);
+  }
+}
+
+export async function runAutonomousReflection(): Promise<void> {
+  const provider = resolveEffectiveAiProvider();
+  if (provider === 'unconfigured' || provider === 'off') return;
+
+  try {
+    const db = getDb();
+    
+    // Get stats about categories
+    type CatRow = { category: string; cnt: number };
+    const catRows = db.prepare(`
+      SELECT category, COUNT(*) as cnt FROM articles 
+      WHERE category IS NOT NULL AND category != '' 
+      GROUP BY category ORDER BY cnt DESC LIMIT 5
+    `).all() as CatRow[];
+    
+    if (catRows.length === 0) return;
+
+    const categoriesText = catRows.map(r => `${r.category} (${r.cnt} مقال)`).join('، ');
+
+    // Get recent commands from memory
+    type MemRow = { command: string };
+    const memRows = db.prepare(`
+      SELECT command FROM assistant_memory 
+      WHERE success = 1 ORDER BY created_at DESC LIMIT 10
+    `).all() as MemRow[];
+    const commandsText = memRows.map(r => r.command).join(' | ');
+
+    const prompt = `أنت العقل المفكر لبرنامج EyesPro الإخباري. قم بتحليل إحصائيات النشاط التالية للمستخدم واستخلص استنتاجاً واحداً وموجزاً عن مجال اهتمام المستخدم الحالي في العمل الإعلامي (مثال: 'يركز المستخدم بشكل مكثف على المقالات السياسية حالياً' أو 'يركز اهتمام المستخدم على متابعة الترندات والبحث فيها'). أعد فقط الاستنتاج في جملة واحدة تبدأ بـ 'يركز المستخدم...' أو 'يهتم المستخدم...':
+
+تصنيفات المقالات النشطة: ${categoriesText}
+آخر أوامر المساعد: ${commandsText}`;
+
+    log.info('Triggering autonomous periodic reflection loop...');
+    const result = await runAiChain(prompt, '');
+    const reflection = result.trim();
+    if (reflection && reflection.length > 5 && (reflection.startsWith('يركز') || reflection.startsWith('يهتم'))) {
+      const existing = listFacts();
+      if (!existing.some(f => f.content.includes(reflection.slice(0, 30)))) {
+        rememberFact(reflection, 'reflection');
+        log.info(`[Autonomous Reflection] Added new insight: ${reflection}`);
+      }
+    }
+  } catch (err) {
+    log.warn(`Autonomous reflection loop failed: ${(err as Error).message}`);
+  }
+}
+
+export async function runAutonomousSourceDiscovery(): Promise<void> {
+  const provider = resolveEffectiveAiProvider();
+  if (provider === 'unconfigured' || provider === 'off') return;
+
+  try {
+    const db = getDb();
+    
+    // Retrieve user's interests from assistant_facts
+    const facts = listFacts();
+    const reflections = facts.filter(f => f.content.includes('يركز المستخدم') || f.content.includes('يهتم المستخدم'));
+    if (reflections.length === 0) return;
+
+    // Use the latest reflection to extract query keywords
+    const latestReflection = reflections[0].content;
+    const prompt = `أنت خبير إعلامي. اقرأ جملة الاهتمام التالية للمستخدم واستخلص منها كلمة بحث أو كلمتين مفتاحيتين رئيسيتين باللغة العربية للبحث عن مقالات أخبار مشابهة في محرك البحث (مثال: 'الذكاء الاصطناعي' أو 'التغير المناخي'). أعد الكلمات المفتاحية فقط بدون أي فواصل أو علامات ترقيم:`;
+    
+    log.info('Running AI keyword extraction for source discovery...');
+    const keywordsResult = await runAiChain(prompt, latestReflection);
+    const query = keywordsResult.trim();
+    if (!query || query.length < 2) return;
+
+    log.info(`Querying Google News for source discovery using keywords: "${query}"`);
+    const articles = await scrapeGoogleNews({ query, maxResults: 15 });
+    if (articles.length === 0) return;
+
+    // Count source frequency
+    const sourceCounts: Record<string, { count: number; sampleLink: string }> = {};
+    for (const art of articles) {
+      if (!art.source) continue;
+      const cleanSource = art.source.trim();
+      if (!sourceCounts[cleanSource]) {
+        sourceCounts[cleanSource] = { count: 0, sampleLink: art.link };
+      }
+      sourceCounts[cleanSource]!.count++;
+    }
+
+    // Get list of existing sources to avoid duplicates
+    type SrcRow = { name: string };
+    const existingSources = db.prepare(`SELECT name FROM sources`).all() as SrcRow[];
+    const existingNames = new Set(existingSources.map(s => s.name.toLowerCase().trim()));
+
+    // Recommend top sources
+    for (const [sourceName, info] of Object.entries(sourceCounts)) {
+      if (info.count >= 2 && !existingNames.has(sourceName.toLowerCase().trim())) {
+        const factText = `مصدر مقترح: ${sourceName} - يغطي اهتماماتك بـ "${query}" (عينة مقال: ${info.sampleLink})`;
+        // Check if already recommended
+        if (!facts.some(f => f.content.includes(`مصدر مقترح: ${sourceName}`))) {
+          rememberFact(factText, 'recommended_source');
+          log.info(`[Autonomous Discovery] Discovered and recommended new source: ${sourceName}`);
+        }
+      }
+    }
+  } catch (err) {
+    log.warn(`Autonomous source discovery failed: ${(err as Error).message}`);
+  }
 }

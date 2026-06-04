@@ -1,6 +1,6 @@
 {
   "name": "eyespro",
-  "version": "1.0.4",
+  "version": "1.0.5",
   "description": "EyesPro — professional Arabic news management & publishing platform",
   "main": "./out/main/index.cjs",
   "author": {

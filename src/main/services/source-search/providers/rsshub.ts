@@ -58,6 +58,13 @@ export async function runRsshub(
 
   const subs = (sector !== 'all' ? SECTOR_SUBREDDITS[sector] ?? [] : ['worldnews', 'news']).slice(0, 4);
   for (const sub of subs) {
+    if (query) {
+      const ql = query.toLowerCase();
+      const subLower = sub.toLowerCase();
+      if (!subLower.includes(ql) && !terms.some((t) => subLower.includes(t.toLowerCase()))) {
+        continue;
+      }
+    }
     const feedUrl = `${base}/reddit/r/${sub}`;
     try {
       const res = await fetchUrlGuarded(feedUrl);
