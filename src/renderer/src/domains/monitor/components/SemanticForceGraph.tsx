@@ -397,7 +397,8 @@ export function SemanticForceGraph({ clusters, onSynthesize, synthesizing }: Sem
             }}
           />
           <div style={{
-            position: 'absolute', bottom: 12, left: 12,
+            position: 'absolute', bottom: 12, insetInlineStart: 12,
+            maxWidth: 'calc(100% - 24px)',
             background: 'rgba(0,0,0,0.6)', padding: '6px 12px',
             borderRadius: '6px', fontSize: '10px', color: '#9ca3af',
             border: '1px solid rgba(255,255,255,0.05)', backdropFilter: 'blur(4px)'
@@ -407,7 +408,7 @@ export function SemanticForceGraph({ clusters, onSynthesize, synthesizing }: Sem
         </div>
 
         {/* Control Panel / Detail View on the right */}
-        <div style={{ flex: '1 1 250px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+        <div style={{ flex: '1 1 250px', minWidth: 0, display: 'flex', flexDirection: 'column', gap: 12 }}>
           <Card 
             title="💡 تفاصيل الترابط الدلالي" 
             className="ui-card--scrollable" 
@@ -419,26 +420,26 @@ export function SemanticForceGraph({ clusters, onSynthesize, synthesizing }: Sem
                 انقر على أي عقدة دائرية في خريطة الترابط لعرض تفاصيلها ودراسة الفروق الدلالية وتوليف المقالات.
               </div>
             ) : selectedNode.type === 'cluster' && selectedNode.clusterId != null ? (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10, minWidth: 0 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                   <span style={{ fontSize: '14px', fontWeight: 'bold', color: 'var(--accent)' }}>مجموعة دلالية #{selectedNode.clusterId}</span>
-                  <span style={{ fontSize: '11px', background: 'var(--accent-muted)', color: 'var(--accent)', padding: '2px 6px', borderRadius: '4px' }}>
+                  <span style={{ fontSize: '11px', background: 'var(--accent-muted)', color: 'var(--accent)', padding: '2px 6px', borderRadius: '4px', whiteSpace: 'nowrap' }}>
                     {getClusterSnapshots(selectedNode.clusterId).length} مصادر متطابقة
                   </span>
                 </div>
-                
+
                 <div style={{ fontSize: '12px', color: 'var(--t2)', borderTop: '1px solid var(--border)', paddingTop: '8px', lineHeight: '1.6' }}>
                   <strong>الملخص الدلالي المقارن:</strong>
-                  <p style={{ marginTop: '4px', fontStyle: 'italic', background: 'rgba(255,255,255,0.02)', padding: '8px', borderRadius: '6px' }}>
+                  <p style={{ marginTop: '4px', fontStyle: 'italic', background: 'rgba(255,255,255,0.02)', padding: '8px', borderRadius: '6px', overflowWrap: 'anywhere', wordBreak: 'break-word' }}>
                     {selectedNode.diffSummary}
                   </p>
                 </div>
 
                 <div style={{ fontSize: '11px', color: 'var(--t2)' }}>
                   <strong>المصادر المتطابقة في المجموعة:</strong>
-                  <ul style={{ margin: '6px 0 0 0', paddingRight: '16px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                  <ul style={{ margin: '6px 0 0 0', paddingInlineStart: '16px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
                     {getClusterSnapshots(selectedNode.clusterId).map((snap, idx) => (
-                      <li key={snap.id} style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      <li key={snap.id} style={{ overflowWrap: 'anywhere', wordBreak: 'break-word', lineHeight: 1.45 }}>
                         [{idx + 1}] {snap.title}
                       </li>
                     ))}
@@ -449,7 +450,7 @@ export function SemanticForceGraph({ clusters, onSynthesize, synthesizing }: Sem
                   variant="primary"
                   disabled={synthesizing}
                   onClick={() => handleSynthesizeCluster(selectedNode.clusterId!)}
-                  style={{ width: '100%', marginTop: '6px' }}
+                  style={{ width: '100%', marginTop: '6px', whiteSpace: 'normal', height: 'auto', lineHeight: 1.4, padding: '8px 10px', fontSize: 12 }}
                 >
                   {synthesizing ? '⏳ جاري توليف الأخبار...' : '✨ دمج المجموعة وصياغة مقال'}
                 </Btn>
@@ -457,12 +458,12 @@ export function SemanticForceGraph({ clusters, onSynthesize, synthesizing }: Sem
             ) : (
               // Selected Node is snapshot
               selectedNode.snapshot && (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                  <div style={{ fontSize: '13px', fontWeight: 'bold', color: 'var(--fg)', lineHeight: '1.4' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8, minWidth: 0 }}>
+                  <div style={{ fontSize: '13px', fontWeight: 'bold', color: 'var(--fg)', lineHeight: '1.4', overflowWrap: 'anywhere', wordBreak: 'break-word' }}>
                     {selectedNode.snapshot.title}
                   </div>
                   {selectedNode.snapshot.summary && (
-                    <div style={{ fontSize: '12px', color: 'var(--t2)', maxHeight: '150px', overflowY: 'auto', background: 'rgba(0,0,0,0.1)', padding: '6px', borderRadius: '6px' }}>
+                    <div style={{ fontSize: '12px', color: 'var(--t2)', maxHeight: '150px', overflowY: 'auto', background: 'rgba(0,0,0,0.1)', padding: '6px', borderRadius: '6px', overflowWrap: 'anywhere', wordBreak: 'break-word' }}>
                       {selectedNode.snapshot.summary}
                     </div>
                   )}

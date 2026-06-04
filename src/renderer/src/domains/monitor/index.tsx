@@ -778,11 +778,11 @@ export function MonitorDomain() {
                         </span>
                       </div>
                       
-                      <div style={{ fontSize: 13, fontWeight: 'bold', color: 'var(--fg)', marginBottom: 6 }}>
+                      <div style={{ fontSize: 13, fontWeight: 'bold', color: 'var(--fg)', marginBottom: 6, overflowWrap: 'anywhere', wordBreak: 'break-word' }}>
                         {alert.topicTitle}
                       </div>
 
-                      <div style={{ fontSize: 12, color: 'var(--t2)', marginBottom: 10, lineHeight: 1.5 }}>
+                      <div style={{ fontSize: 12, color: 'var(--t2)', marginBottom: 10, lineHeight: 1.5, overflowWrap: 'anywhere', wordBreak: 'break-word' }}>
                         {alert.summary}
                       </div>
 
@@ -801,7 +801,7 @@ export function MonitorDomain() {
                         variant="primary"
                         disabled={synthesizing}
                         onClick={() => void handleSynthesize(alert.snapshotIds)}
-                        style={{ fontSize: 11, padding: '4px 12px' }}
+                        style={{ fontSize: 11, padding: '6px 12px', whiteSpace: 'normal', height: 'auto', lineHeight: 1.4, maxWidth: '100%' }}
                       >
                         {synthesizing ? '⏳ جاري الدمج...' : '✨ دمج التغطية وصياغة تقرير مدمج'}
                       </Btn>
