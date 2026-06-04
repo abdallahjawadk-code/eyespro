@@ -219,6 +219,19 @@ export interface AssistantResult {
 
 export interface AssistantSuggestion { text: string; command?: string }
 export interface AssistantSuggestions { greeting: string; suggestions: AssistantSuggestion[] }
+export interface AssistantProposal {
+  id: number;
+  kind: 'add_source' | 'monitor_competitor';
+  title: string;
+  payload: Record<string, unknown>;
+  source: string;
+  confidence: number;
+  status: 'pending' | 'approved' | 'rejected' | 'undone';
+  result: Record<string, unknown> | null;
+  created_at: string;
+  decided_at: string | null;
+}
+export interface AssistantProposalDecision { ok: boolean; result?: Record<string, unknown>; error?: string }
 export interface SttResult { ok: boolean; text?: string; engine?: 'local' | 'cloud'; error?: string }
 export interface WhisperInfo { binary: string | null; model: string | null; ready: boolean }
 
@@ -904,8 +917,10 @@ export interface EyesProApi {
     install: () => Inv<void>;
   };
   assistant: {
-    command: (command: string, confirmed?: boolean) => Inv<AssistantResult>;
-    suggest: () => Inv<AssistantSuggestions>;
+    command: (command: string, confirmed?: boolean, lang?: string) => Inv<AssistantResult>;
+    suggest: (lang?: string) => Inv<AssistantSuggestions>;
+    proposals: (status?: string) => Inv<AssistantProposal[]>;
+    proposalDecision: (id: number, decision: 'approve' | 'reject' | 'undo') => Inv<AssistantProposalDecision>;
     transcribe: (audio: ArrayBuffer, mime?: string, lang?: string) => Inv<SttResult>;
   };
   whisper: {

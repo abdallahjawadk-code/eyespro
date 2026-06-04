@@ -205,6 +205,19 @@ export async function runAutopilotOnce(
 
     if (stopRequested) throw new Error('تم إيقاف الحلقة');
 
+    // Perception loop: let the freshly fetched trends feed the assistant's adaptive
+    // memory so the user's interests strengthen from real, recurring signal. Deferred
+    // import avoids a static cycle (assistant imports runAutopilotOnce from here).
+    try {
+      const { perceive } = await import('./assistant');
+      perceive(listTrends(cfg.geo || undefined).slice(0, 40).map((t) => ({ title: t.title })), { source: 'autopilot' });
+      // Co-pilot: surface discoveries as proposals, then let guarded autonomy
+      // auto-approve the low-risk, reversible ones within the user's limits.
+      const { generateSourceProposals, autoApprovePending } = await import('./copilot');
+      generateSourceProposals();
+      autoApprovePending(); // logs what it auto-approved; all reversible via the ledger
+    } catch { /* non-fatal — perception/autonomy is best-effort */ }
+
     const trends = pickPendingTrends(cfg);
     result.processed = trends.length;
 

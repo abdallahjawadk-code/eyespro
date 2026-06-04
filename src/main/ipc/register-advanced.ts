@@ -712,18 +712,40 @@ export function registerAdvancedHandlers(ipcMain: IpcMain, getWin: () => Browser
   });
 
   // AI Assistant — natural-language command execution.
-  ipcMain.handle('assistant:command', async (_e, command: string, confirmed?: boolean) => {
+  ipcMain.handle('assistant:command', async (_e, command: string, confirmed?: boolean, lang?: string) => {
     try {
       const { runAssistant } = await import('../services/assistant');
-      return ok(await runAssistant(String(command ?? ''), confirmed === true));
+      return ok(await runAssistant(String(command ?? ''), confirmed === true, lang === 'en' ? 'en' : 'ar'));
     } catch (e) { return { ok: false, error: (e as Error).message }; }
   });
 
   // Proactive suggestions based on current app state (shown when the robot opens).
-  ipcMain.handle('assistant:suggest', async () => {
+  ipcMain.handle('assistant:suggest', async (_e, lang?: string) => {
     try {
       const { getSuggestions } = await import('../services/assistant');
-      return ok(getSuggestions());
+      return ok(getSuggestions(lang === 'en' ? 'en' : 'ar'));
+    } catch (e) { return { ok: false, error: (e as Error).message }; }
+  });
+
+  // Co-pilot ledger: list the assistant's proposals (pending by default).
+  ipcMain.handle('assistant:proposals', async (_e, status?: string) => {
+    try {
+      const { generateSourceProposals, listProposals } = await import('../services/copilot');
+      generateSourceProposals();
+      const s = (status === 'all' || status === 'approved' || status === 'rejected' || status === 'undone') ? status : 'pending';
+      return ok(listProposals(s));
+    } catch (e) { return { ok: false, error: (e as Error).message }; }
+  });
+
+  // Co-pilot ledger: approve / reject / undo a proposal.
+  ipcMain.handle('assistant:proposalDecision', async (_e, id: number, decision: string) => {
+    try {
+      const { approveProposal, rejectProposal, undoProposal } = await import('../services/copilot');
+      const pid = Number(id) || 0;
+      if (decision === 'approve') return ok(approveProposal(pid));
+      if (decision === 'reject') return ok(rejectProposal(pid));
+      if (decision === 'undo') return ok(undoProposal(pid));
+      return { ok: false, error: 'unknown_decision' };
     } catch (e) { return { ok: false, error: (e as Error).message }; }
   });
 

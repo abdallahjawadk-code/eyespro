@@ -346,8 +346,10 @@ const api: EyesProApi = {
     install: () => invoke('updater:install')
   },
   assistant: {
-    command: (command: string, confirmed?: boolean) => invoke('assistant:command', command, confirmed),
-    suggest: () => invoke('assistant:suggest'),
+    command: (command: string, confirmed?: boolean, lang?: string) => invoke('assistant:command', command, confirmed, lang),
+    suggest: (lang?: string) => invoke('assistant:suggest', lang),
+    proposals: (status?: string) => invoke('assistant:proposals', status),
+    proposalDecision: (id: number, decision: 'approve' | 'reject' | 'undo') => invoke('assistant:proposalDecision', id, decision),
     transcribe: (audio: ArrayBuffer, mime?: string, lang?: string) => invoke('assistant:transcribe', audio, mime, lang)
   },
   whisper: {

@@ -92,7 +92,7 @@ export function Assistant() {
           if (text) { setSuggestions([]); void send(text); }
           else {
             setState('error'); setTimeout(() => setState('idle'), 1500);
-            setMsgs((m) => [...m, { who: 'bot', text: (r.ok ? r.data?.error : r.error) || 'لم ألتقط كلاماً واضحاً.', err: true }]);
+            setMsgs((m) => [...m, { who: 'bot', text: (r.ok ? r.data?.error : r.error) || t('assistant.noSpeech', { defaultValue: 'لم ألتقط كلاماً واضحاً.' }), err: true }]);
           }
         } catch { setBusy(false); setState('idle'); }
       };
@@ -103,7 +103,7 @@ export function Assistant() {
       setTimeout(() => { if (recorderRef.current?.state === 'recording') recorderRef.current.stop(); }, 12_000);
     } catch {
       setListening(false);
-      setMsgs((m) => [...m, { who: 'bot', text: 'تعذّر الوصول للميكروفون — تحقّق من إذن الميكروفون.', err: true }]);
+      setMsgs((m) => [...m, { who: 'bot', text: t('assistant.micError', { defaultValue: 'تعذّر الوصول للميكروفون — تحقّق من إذن الميكروفون.' }), err: true }]);
     }
   }
   function stopListening() { try { recorderRef.current?.stop(); } catch { /* ignore */ } }
@@ -114,13 +114,13 @@ export function Assistant() {
   useEffect(() => {
     if (!open || greeted) return;
     setGreeted(true);
-    window.eyespro.assistant.suggest().then((r) => {
+    window.eyespro.assistant.suggest(i18n.language).then((r) => {
       if (r.ok && r.data) {
         setMsgs([{ who: 'bot', text: r.data.greeting }]);
         setSuggestions(r.data.suggestions ?? []);
       }
     }).catch(() => undefined);
-  }, [open, greeted]);
+  }, [open, greeted, i18n.language]);
 
   async function send(command: string, confirmed = false) {
     if (!command.trim() || busy) return;
@@ -130,10 +130,10 @@ export function Assistant() {
     setPending(null);
     try {
       // brief "thinking" → "executing" cue
-      const p = window.eyespro.assistant.command(command, confirmed);
+      const p = window.eyespro.assistant.command(command, confirmed, i18n.language);
       setTimeout(() => setState((s) => (s === 'thinking' ? 'executing' : s)), 600);
       const r = await p;
-      const res = (r && r.ok ? r.data : { ok: false, reply: r?.error ?? 'خطأ', tool: 'chat', error: r?.error }) as AssistantResult;
+      const res = (r && r.ok ? r.data : { ok: false, reply: r?.error ?? t('assistant.error', { defaultValue: 'خطأ' }), tool: 'chat', error: r?.error }) as AssistantResult;
       if (res.needsConfirm) {
         setPending({ command });
         setMsgs((m) => [...m, { who: 'bot', text: res.reply }]);

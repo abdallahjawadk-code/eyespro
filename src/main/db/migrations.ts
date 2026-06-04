@@ -24,6 +24,8 @@ const KNOWN_TABLES = new Set([
   'article_processing_log',
   // v49: crawler tracking
   'crawler_visited_urls',
+  // v52-v57: AI assistant learning core + co-pilot ledger
+  'assistant_memory', 'assistant_facts', 'assistant_proposals',
 ]);
 
 const SAFE_IDENT = /^[a-z_][a-z0-9_]*$/i;
@@ -1312,5 +1314,57 @@ export function runMigrations(db: Database.Database): void {
   // v54 — Website change visual side-by-side diff text column
   migrateTo(db, 54, () => {
     ensureCol(db, 'competitor_monitors', 'last_content_text', 'TEXT');
+  });
+
+  // v55 — Adaptive synaptic memory: turn assistant_facts into a neuron-like store.
+  // Each fact carries a synaptic "weight" (strength) that is potentiated on
+  // repeated activation/re-derivation and decays with disuse (Hebbian learning).
+  // `hits` counts activations; `last_used` drives time-based decay. Local-only.
+  migrateTo(db, 55, () => {
+    ensureCol(db, 'assistant_facts', 'weight', 'REAL NOT NULL DEFAULT 1.0');
+    ensureCol(db, 'assistant_facts', 'hits', 'INTEGER NOT NULL DEFAULT 0');
+    ensureCol(db, 'assistant_facts', 'last_used', 'TEXT');
+    db.exec(`CREATE INDEX IF NOT EXISTS idx_assistant_facts_weight ON assistant_facts(weight);`);
+  });
+
+  // v56 — Provenance-aware memory: every learned fact records WHERE it came from
+  // (`source`), how trustworthy that origin is (`trust` 0–1), and whether it was
+  // directly observed vs model-inferred (`observed`). Lets the assistant weight a
+  // fact's influence by trustworthiness and guard against poisoned/hallucinated
+  // learning before it ever learns from the open internet.
+  migrateTo(db, 56, () => {
+    ensureCol(db, 'assistant_facts', 'source', "TEXT NOT NULL DEFAULT 'user'");
+    ensureCol(db, 'assistant_facts', 'trust', 'REAL NOT NULL DEFAULT 1.0');
+    ensureCol(db, 'assistant_facts', 'observed', 'INTEGER NOT NULL DEFAULT 1');
+  });
+
+  // v57 — Co-pilot ledger: the assistant proposes actions ("add this discovered
+  // source", "monitor this competitor") and the user approves/rejects. Every
+  // proposal and its outcome is recorded here — the audit trail + undo substrate
+  // for collaborative, guarded autonomy. `result` stores what executing produced
+  // (e.g. the created source id) so an approval can be reversed.
+  migrateTo(db, 57, () => {
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS assistant_proposals (
+        id         INTEGER PRIMARY KEY AUTOINCREMENT,
+        kind       TEXT NOT NULL,
+        title      TEXT NOT NULL,
+        payload    TEXT,
+        source     TEXT NOT NULL DEFAULT 'assistant',
+        confidence REAL NOT NULL DEFAULT 0.5,
+        status     TEXT NOT NULL DEFAULT 'pending',
+        result     TEXT,
+        created_at TEXT NOT NULL DEFAULT (datetime('now')),
+        decided_at TEXT
+      );
+    `);
+    db.exec(`CREATE INDEX IF NOT EXISTS idx_assistant_proposals_status ON assistant_proposals(status);`);
+  });
+
+  // v58 — Guarded autonomy: record WHO decided a proposal ('user' vs 'auto') so the
+  // self-running executor can enforce a per-day cap and the user can audit exactly
+  // what the assistant did on its own (and undo it). Everything stays reversible.
+  migrateTo(db, 58, () => {
+    ensureCol(db, 'assistant_proposals', 'decided_by', "TEXT NOT NULL DEFAULT 'user'");
   });
 }

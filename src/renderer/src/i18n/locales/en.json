@@ -1,4 +1,20 @@
 {
+  "assistant": {
+    "title": "Smart Assistant",
+    "greeting": "Hi! I'm your smart assistant. Type what you'd like done — like \"fetch trends\" or \"how many articles\".",
+    "placeholder": "Type or speak… e.g. \"fetch trends\"",
+    "send": "Run",
+    "thinking": "Thinking…",
+    "executing": "Running…",
+    "confirm": "Confirm",
+    "speak": "Speak",
+    "listening": "Listening…",
+    "voiceOn": "Enable voice",
+    "voiceOff": "Mute voice",
+    "error": "Error",
+    "noSpeech": "I didn't catch any clear speech.",
+    "micError": "Couldn't access the microphone — check the mic permission."
+  },
   "ai": {
     "done": "Done",
     "failed": "Failed",
@@ -45,6 +61,12 @@
     "targetLang": "Target language"
   },
   "aiProv": {
+    "localTitle": "Local AI (Ollama)",
+    "localDesc": "Pick any installed local model as your default AI — runs offline, no API key, and your data never leaves your device.",
+    "localLoading": "Searching for local models…",
+    "localNone": "No local models found. Install one via Ollama (e.g. ollama pull llama3.2), then click Refresh.",
+    "localBadge": "Local",
+    "refresh": "Refresh",
     "active": "Default",
     "advanced": "Advanced",
     "allowOllamaHint": "1 to allow Ollama without built-in mode",

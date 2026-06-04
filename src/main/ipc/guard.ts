@@ -313,6 +313,8 @@ const CHANNEL_PERMS: Record<string, Perm> = {
   'assistant:command': 'write',
   'assistant:suggest': 'read',
   'assistant:transcribe': 'write',
+  'assistant:proposals': 'read',
+  'assistant:proposalDecision': 'write',
   'whisper:status': 'read',
   'whisper:update': 'admin',
   'downloader:resize': 'write',

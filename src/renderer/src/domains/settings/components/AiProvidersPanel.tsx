@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { PROVIDER_DEFAULT_MODELS } from '../hooks/useAiSettings';
+import type { AiModel } from '../../../../../shared/api-types';
 
 export type AiProviderTestState = {
   loading: boolean;
@@ -107,11 +108,15 @@ export function AiProvidersPanel({
   savingProvider,
   activeProvider,
   activeModel,
+  localModels = [],
+  loadingModels = false,
   onToggle,
   onFieldChange,
   onSave,
   onTest,
   onSetActive,
+  onSetActiveModel,
+  refreshModels,
 }: {
   integrations: Record<string, string>;
   expanded: Record<string, boolean>;
@@ -119,11 +124,15 @@ export function AiProvidersPanel({
   savingProvider: string | null;
   activeProvider: string;
   activeModel?: string;
+  localModels?: AiModel[];
+  loadingModels?: boolean;
   onToggle: (id: string) => void;
   onFieldChange: (key: string, val: string) => void;
   onSave: (providerId: string) => void;
   onTest: (providerId: string) => void;
   onSetActive: (providerId: string) => void;
+  onSetActiveModel?: (providerId: string, modelId: string) => void;
+  refreshModels?: () => void;
 }) {
   const { t } = useTranslation();
 
@@ -289,6 +298,77 @@ export function AiProvidersPanel({
             </div>
           );
         })}
+      </div>
+
+      {/* Local AI (Ollama) — pick ANY installed local model as the default */}
+      <div className="sp-plat-card" style={{ marginTop: 14, borderColor: '#16a34a55' }}>
+        <div className="sp-plat-hdr" style={{ cursor: 'default' }}>
+          <span className="sp-plat-hdr-accent" style={{ background: '#16a34a' }} />
+          <span className="sp-plat-hdr-ico">🖥️</span>
+          <span className="sp-plat-hdr-name">{t('aiProv.localTitle', { defaultValue: 'الذكاء المحلي (Ollama)' })}</span>
+          {activeProvider === 'ollama' && (
+            <span className="sp-plat-hdr-status sp-plat-ok" style={{ marginInlineEnd: 4 }}>★ {t('aiProv.active')}</span>
+          )}
+          <button
+            type="button"
+            className="btn btn-ghost btn-xs"
+            onClick={() => refreshModels?.()}
+            disabled={loadingModels}
+            style={{ marginInlineStart: 'auto' }}
+          >
+            {loadingModels ? '…' : '↻ ' + t('aiProv.refresh', { defaultValue: 'تحديث' })}
+          </button>
+        </div>
+
+        <div className="sp-plat-body" style={{ display: 'block' }}>
+          <p style={{ margin: '0 0 10px', fontSize: 'var(--text-sm)', color: 'var(--t2)', lineHeight: 1.55 }}>
+            {t('aiProv.localDesc', { defaultValue: 'اختر أي موديل محلي مثبّت كذكاء افتراضي — يعمل بلا إنترنت وبلا مفتاح، وبياناتك لا تغادر جهازك.' })}
+          </p>
+
+          {loadingModels && !localModels.length ? (
+            <div style={{ fontSize: '0.82rem', color: 'var(--t2)' }}>… {t('aiProv.localLoading', { defaultValue: 'جاري البحث عن الموديلات المحلية…' })}</div>
+          ) : localModels.length === 0 ? (
+            <div style={{
+              display: 'flex', alignItems: 'center', gap: 8, padding: '10px 12px',
+              background: 'var(--bg2)', borderRadius: 8, fontSize: '0.82rem', color: 'var(--t2)',
+              border: '1px solid var(--warn)',
+            }}>
+              ⚠ {t('aiProv.localNone', { defaultValue: 'لم يُعثر على موديلات محلية. ثبّت موديلاً عبر Ollama (مثل: ollama pull llama3.2) ثم اضغط تحديث.' })}
+            </div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {localModels.map((m) => {
+                const isActive = activeProvider === 'ollama' && activeModel === m.id;
+                return (
+                  <div
+                    key={m.id}
+                    className={isActive ? 'ai-prov-active' : ''}
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px',
+                      background: 'var(--bg2)', borderRadius: 8,
+                      border: `1px solid ${isActive ? '#16a34a' : 'var(--border)'}`,
+                    }}
+                  >
+                    <span style={{ fontSize: '1rem' }}>🧠</span>
+                    <code style={{ color: 'var(--t1)', fontWeight: 600, fontSize: '0.85rem' }}>{m.id}</code>
+                    <span style={{ fontSize: '0.72rem', color: 'var(--t2)', border: '1px solid var(--border)', borderRadius: 5, padding: '1px 6px' }}>
+                      {t('aiProv.localBadge', { defaultValue: 'محلي' })}
+                    </span>
+                    <button
+                      type="button"
+                      className={`btn btn-sm${isActive ? ' sp-on' : ''}`}
+                      style={isActive ? undefined : { marginInlineStart: 'auto', background: '#16a34a', color: '#fff', border: 'none' }}
+                      disabled={isActive}
+                      onClick={() => onSetActiveModel?.('ollama', m.id)}
+                    >
+                      {isActive ? '✓ ' + t('aiProv.defaultProvider') : '☆ ' + t('aiProv.setDefault')}
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
       </div>
     </>
   );

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import type { AiProviderTestState } from '../components/AiProvidersPanel';
+import type { AiModel } from '../../../../../shared/api-types';
 
 const PROVIDER_FIELDS: Record<string, string[]> = {
   gemini: ['gemini_api_key'],
@@ -24,6 +25,8 @@ export function useAiSettings() {
   const [savingProvider, setSavingProvider] = useState<string | null>(null);
   const [activeProvider, setActiveProvider] = useState('gemini');
   const [activeModel, setActiveModel] = useState('');
+  const [localModels, setLocalModels] = useState<AiModel[]>([]);
+  const [loadingModels, setLoadingModels] = useState(false);
 
   const load = useCallback(async () => {
     const res = await window.eyespro.settings.getAll().catch(() => ({ ok: false, data: {} }));
@@ -38,7 +41,17 @@ export function useAiSettings() {
     }
   }, []);
 
-  useEffect(() => { void load(); }, [load]);
+  /** Discover locally installed Ollama models so any of them can be set as default. */
+  const refreshModels = useCallback(async () => {
+    setLoadingModels(true);
+    const res = await window.eyespro.ai.listModels().catch(() => ({ ok: false as const, data: undefined }));
+    if (res.ok && Array.isArray(res.data)) {
+      setLocalModels((res.data as AiModel[]).filter((m) => m.type === 'local'));
+    }
+    setLoadingModels(false);
+  }, []);
+
+  useEffect(() => { void load(); void refreshModels(); }, [load, refreshModels]);
 
   const onFieldChange = useCallback((key: string, val: string) => {
     setIntegrations((prev) => ({ ...prev, [key]: val }));
@@ -88,6 +101,17 @@ export function useAiSettings() {
     void load();
   }, [load]);
 
+  /**
+   * Activate a specific model as the default AI. Used for local Ollama models so
+   * the user can pick *any* installed model — not just the built-in default.
+   */
+  const onSetActiveModel = useCallback(async (providerId: string, modelId: string) => {
+    await window.eyespro.ai.setModel(providerId, modelId);
+    setActiveProvider(providerId);
+    setActiveModel(modelId);
+    void load();
+  }, [load]);
+
   return {
     integrations,
     expanded,
@@ -95,11 +119,15 @@ export function useAiSettings() {
     savingProvider,
     activeProvider,
     activeModel,
+    localModels,
+    loadingModels,
     onToggle,
     onFieldChange,
     onSave,
     onTest,
     onSetActive,
+    onSetActiveModel,
+    refreshModels,
     reload: load,
   };
 }
