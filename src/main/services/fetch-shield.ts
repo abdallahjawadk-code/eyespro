@@ -1,7 +1,7 @@
 import { getDb } from '../db/database';
 
 const FAILURE_THRESHOLD = 5;
-const OPEN_DURATION_MS = 6 * 60 * 60 * 1000; // 6 hours
+const OPEN_DURATION_MS = 20 * 60 * 1000; // 20 minutes (was 6h — too long for user-facing source fetches)
 
 export type CircuitMode = 'normal' | 'open' | 'feed_only';
 

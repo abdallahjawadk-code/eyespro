@@ -161,11 +161,70 @@ const TOOLS: ToolDef[] = [
     setSetting('ui_language', l);
     return { summary: l === 'en' ? 'Set UI language to English (reopen to apply).' : 'غيّرتُ لغة الواجهة إلى العربية (أعد الفتح للتطبيق الكامل).', data: { lang: l } };
   } },
+  // ── learning core ──
+  { name: 'remember', desc: 'حفظ معلومة/تفضيل ليتذكّرها المساعد دائماً. args:{fact} مثل «أفضّل العناوين القصيرة».', run: async (a) => {
+    const fact = String(a.fact ?? '').trim();
+    if (!fact) return { summary: 'ماذا تريدني أن أتذكّر؟' };
+    rememberFact(fact);
+    return { summary: `حفظتُها وسأراعيها دائماً: «${fact}»`, data: { fact } };
+  } },
+  { name: 'recall_facts', desc: 'عرض ما تعلّمه المساعد عنك (تفضيلاتك ومعلوماتك).', run: async () => {
+    const f = listFacts().map((x) => ({ id: x.id, title: x.content }));
+    return { summary: f.length ? `أتذكّر ${f.length} معلومة عنك.` : 'لم أتعلّم شيئاً عنك بعد — علّمني بـ «تذكّر أنني…».', data: f };
+  } },
+  { name: 'ask_knowledge', desc: 'سؤال يُجاب من بياناتك (مقالاتك/إحصاءاتك/تفضيلاتك). args:{question} مثل «ماذا نشرتُ عن X؟»', run: async (a) => {
+    const q = String(a.question ?? '').trim();
+    if (!q) return { summary: 'ما سؤالك؟' };
+    const ctx = retrieveContext(q);
+    const answer = await runAiChain(
+      `أنت مساعد EyesPro. أجب عن سؤال المستخدم اعتماداً حصرياً على بياناته أدناه، بإيجاز ودقّة وبالعربية. إن لم تكفِ البيانات قل ذلك بوضوح.\n\nبيانات المستخدم:${ctx}\n\nالسؤال: ${q}`,
+      '',
+    );
+    return { summary: answer.trim() || 'لم أجد إجابة في بياناتك.', data: { grounded: true } };
+  } },
 ];
 
 // ── local memory (few-shot learning, on-device only) ──────────────────────────
 function recordMemory(command: string, tool: string, success: boolean): void {
   try { getDb().prepare(`INSERT INTO assistant_memory (command, tool, success) VALUES (?, ?, ?)`).run(command.slice(0, 300), tool, success ? 1 : 0); } catch { /* non-fatal */ }
+}
+
+// ── learning core: facts/preferences the user teaches the assistant ───────────
+function rememberFact(content: string, kind = 'fact'): void {
+  try { getDb().prepare(`INSERT INTO assistant_facts (kind, content) VALUES (?, ?)`).run(kind, content.slice(0, 500)); } catch { /* non-fatal */ }
+}
+function listFacts(): { id: number; content: string }[] {
+  try { return getDb().prepare(`SELECT id, content FROM assistant_facts ORDER BY created_at DESC LIMIT 40`).all() as { id: number; content: string }[]; } catch { return []; }
+}
+function factsBlock(): string {
+  const f = listFacts();
+  return f.length ? '\nما تعلّمتُه عنك (راعِه دائماً):\n' + f.map((x) => `• ${x.content}`).join('\n') : '';
+}
+
+/**
+ * RAG: gather the user's own data relevant to a question (their articles + facts +
+ * live stats) so the AI answers grounded in the program's data — never leaves the
+ * device except as prompt context to the user's chosen provider.
+ */
+function retrieveContext(question: string): string {
+  const parts: string[] = [];
+  const words = question.replace(/[^\p{L}\p{N} ]/gu, ' ').split(/\s+/).filter((w) => w.length > 2).slice(0, 4);
+  const seen = new Set<number>();
+  for (const w of words) {
+    for (const a of searchArticles(w, 4) as { id: number; title: string; summary?: string; status: string }[]) {
+      if (seen.has(a.id)) continue; seen.add(a.id);
+      parts.push(`- [${a.status}] ${a.title}${a.summary ? ` — ${a.summary.slice(0, 120)}` : ''}`);
+      if (seen.size >= 8) break;
+    }
+    if (seen.size >= 8) break;
+  }
+  const m = dashboardMetrics() as { total?: number; published?: number; pending?: number; sources?: number };
+  const facts = listFacts();
+  let ctx = '';
+  if (parts.length) ctx += `\nمقالات ذات صلة من بياناتك:\n${parts.join('\n')}`;
+  ctx += `\nأرقام عامة: ${m.total ?? 0} مقال، ${m.published ?? 0} منشور، ${m.sources ?? 0} مصدر.`;
+  if (facts.length) ctx += `\nتفضيلاتك: ${facts.map((f) => f.content).join('؛ ')}`;
+  return ctx;
 }
 
 /** Recent successful command→tool pairs, to teach the model this user's phrasing. */
@@ -187,9 +246,10 @@ function buildIntentPrompt(command: string): string {
 الأدوات:
 ${toolList}
 - chat: سؤال/محادثة عامة لا تطابق أداة.
-${fewShotExamples()}
+${factsBlock()}${fewShotExamples()}
 
 أمر المستخدم: "${command}"
+(إن كان سؤالاً عن بيانات المستخدم نفسه — مقالاته أو نشره — فاستخدم ask_knowledge.)
 
 أعد حصراً JSON بلا أي نص إضافي:
 {"tool":"<اسم>","args":{...},"reply":"<ردّ عربي قصير ودود>"}`;

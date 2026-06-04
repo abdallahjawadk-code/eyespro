@@ -1,4 +1,5 @@
 import { app } from 'electron';
+import { autoUpdater } from 'electron-updater';
 import { createLogger } from '../logger';
 import { getSetting } from './settings';
 
@@ -19,8 +20,6 @@ let status: UpdaterStatus = {
   downloaded: false,
   checking: false,
 };
-// eslint-disable-next-line @typescript-eslint/consistent-type-imports
-let autoUpdater: typeof import('electron-updater').autoUpdater | null = null;
 let emit: ((channel: string, data: unknown) => void) | undefined;
 
 function pushStatus(): void {
@@ -33,8 +32,6 @@ export async function initUpdater(onEvent?: (channel: string, data: unknown) => 
   // In dev there is no installer to update; expose the version but skip the feed.
   if (!app.isPackaged) return;
   try {
-    const mod = await import('electron-updater');
-    autoUpdater = mod.autoUpdater;
     autoUpdater.autoDownload = false;
     autoUpdater.autoInstallOnAppQuit = true;
     autoUpdater.logger = null;
@@ -84,7 +81,7 @@ export function getUpdaterStatus(): UpdaterStatus {
 }
 
 export async function checkForUpdates(): Promise<UpdaterStatus> {
-  if (!autoUpdater) return getUpdaterStatus();
+  if (!app.isPackaged) return getUpdaterStatus();
   status.checking = true;
   status.error = undefined;
   try {
@@ -98,9 +95,11 @@ export async function checkForUpdates(): Promise<UpdaterStatus> {
 }
 
 export async function downloadUpdate(): Promise<void> {
-  await autoUpdater?.downloadUpdate();
+  if (!app.isPackaged) return;
+  await autoUpdater.downloadUpdate();
 }
 
 export function installUpdate(): void {
-  autoUpdater?.quitAndInstall();
+  if (!app.isPackaged) return;
+  autoUpdater.quitAndInstall();
 }

@@ -1293,4 +1293,19 @@ export function runMigrations(db: Database.Database): void {
     `);
     db.exec(`CREATE INDEX IF NOT EXISTS idx_assistant_memory_tool ON assistant_memory(tool, success);`);
   });
+
+  // v53 — Learning core: explicit facts/preferences the user teaches the assistant
+  // ("remember that I prefer short headlines"). Injected into the AI prompt so the
+  // robot personalises over time. Local-only, never sent anywhere but the user's
+  // own chosen AI provider as prompt context.
+  migrateTo(db, 53, () => {
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS assistant_facts (
+        id         INTEGER PRIMARY KEY AUTOINCREMENT,
+        kind       TEXT NOT NULL DEFAULT 'fact',
+        content    TEXT NOT NULL,
+        created_at TEXT NOT NULL DEFAULT (datetime('now'))
+      );
+    `);
+  });
 }
