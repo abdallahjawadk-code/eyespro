@@ -1,5 +1,7 @@
 import type { IpcMain, BrowserWindow } from 'electron';
-import { dialog } from 'electron';
+import { dialog, shell, app } from 'electron';
+import fs from 'node:fs';
+import path from 'node:path';
 import { sanitizeInt } from '../../security/sanitize';
 import * as articles from '../../services/articles';
 import { checkDuplicate } from '../../services/ingest';
@@ -52,8 +54,6 @@ export function registerArticlesHandlers(ipcMain: IpcMain, getWin: () => Browser
   );
   ipcMain.handle('articles:saveDocxFile', async (_e, filename: string, data: unknown) => {
     try {
-      const { shell } = await import('electron');
-      const fs = await import('fs');
       const safeFilename = String(filename || 'article').replace(/[<>:"/\\|?*]/g, '_').slice(0, 80);
       const w = getWin();
       const opts = { defaultPath: `${safeFilename}.docx`, filters: [{ name: 'Word Document', extensions: ['docx'] }] };
@@ -73,10 +73,6 @@ export function registerArticlesHandlers(ipcMain: IpcMain, getWin: () => Browser
     opts?: { groupBy?: string; title?: string; toDesktop?: boolean }
   ) => {
     try {
-      const { shell, app } = await import('electron');
-      const fs = await import('fs');
-      const path = await import('path');
-
       const ids = Array.isArray(articleIds)
         ? articleIds.map((id) => sanitizeInt(Number(id), 1)).filter((id) => id > 0).slice(0, 500)
         : [];

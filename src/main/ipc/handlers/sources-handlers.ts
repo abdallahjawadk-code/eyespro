@@ -1,4 +1,6 @@
 import type { IpcMain } from 'electron';
+import { dialog } from 'electron';
+import fs from 'node:fs';
 import { sanitizeInt, sanitizeString } from '../../security/sanitize';
 import { isUrlFetchAllowed } from '../../security/url-policy';
 import { normaliseTelegramUrl } from '../../services/source-discovery';
@@ -176,11 +178,9 @@ export function registerSourcesHandlers(ipcMain: IpcMain): void {
     return ok(await importOpml(String(xml || '')));
   });
   ipcMain.handle('opml:importFile', async () => {
-    const { dialog } = await import('electron');
     const { importOpml } = await import('../../services/opml-import');
     const result = await dialog.showOpenDialog({ filters: [{ name: 'OPML', extensions: ['opml', 'xml'] }], properties: ['openFile'] });
     if (result.canceled || !result.filePaths.length) return ok(null);
-    const fs = await import('fs');
     const xml = fs.readFileSync(result.filePaths[0], 'utf8');
     return ok(await importOpml(xml));
   });
