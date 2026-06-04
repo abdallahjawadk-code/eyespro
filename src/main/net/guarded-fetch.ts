@@ -68,7 +68,23 @@ export interface GuardedFetchOpts {
   maxBytes?: number;
   conditional?: { etag?: string | null; lastModified?: string | null };
   timeout?: number;
+  /**
+   * Discovery/probe fetch: this request is speculatively trying a URL that may
+   * legitimately not exist (e.g. guessing /feed, /rss during source discovery).
+   * A failure here must NOT trip the host-wide circuit breaker — otherwise probing
+   * a few dead paths on a healthy host (which returns 404) blocks every real source
+   * on that host. Successes are still recorded.
+   */
+  probe?: boolean;
 }
+
+/**
+ * HTTP statuses that indicate "this specific path/resource isn't here" rather than
+ * "this host is unhealthy/blocking us". These must never trip the host circuit
+ * breaker — many independent feeds live on one host (feeds.npr.org, medium.com…)
+ * and one 404 path should not take down the others.
+ */
+const NON_CIRCUIT_STATUSES = new Set([400, 404, 405, 410]);
 
 export async function fetchUrlGuarded(
   url: string,
@@ -173,7 +189,9 @@ export async function fetchUrlGuarded(
 
   if (result.ok) {
     recordFetchSuccess(host);
-  } else if (result.status > 0) {
+  } else if (result.status > 0 && !opts?.probe && !NON_CIRCUIT_STATUSES.has(result.status)) {
+    // Only count failures that reflect host health (403/429/5xx/timeouts).
+    // 404-class "resource not found" and discovery probes never trip the circuit.
     recordFetchFailure(host, result.status);
   }
 

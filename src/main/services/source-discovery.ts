@@ -153,7 +153,7 @@ async function probeFeedPaths(origin: string): Promise<{ feedUrl: string; type: 
   for (const path of RSS_PROBE_PATHS) {
     const candidate = origin.replace(/\/$/, '') + path;
     try {
-      const r = await fetchUrlGuarded(candidate);
+      const r = await fetchUrlGuarded(candidate, { probe: true });
       if (!r.ok || r.body.length < 80) continue;
       const t = detectType(r.body, candidate);
       if (t !== 'html') return { feedUrl: candidate, type: t };
@@ -167,7 +167,7 @@ async function probeJsonApiPaths(origin: string): Promise<{ feedUrl: string } | 
   for (const path of JSON_API_PROBE_PATHS) {
     const candidate = base + path;
     try {
-      const r = await fetchUrlGuarded(candidate);
+      const r = await fetchUrlGuarded(candidate, { probe: true });
       if (r.ok && detectJsonApi(r.body)) return { feedUrl: candidate };
     } catch { /* next */ }
   }
@@ -202,7 +202,7 @@ function addCandidate(
 /** Probe feed and compute freshness + extract ETag */
 export async function scoreFeedCandidate(c: FeedCandidate): Promise<FeedCandidate> {
   try {
-    const r = await fetchUrlGuarded(c.feedUrl);
+    const r = await fetchUrlGuarded(c.feedUrl, { probe: true });
     if (!r.ok) return { ...c, score: Math.max(0, c.confidence - 40) };
 
     const etag = typeof r.headers?.etag === 'string' ? r.headers.etag : undefined;
@@ -377,7 +377,7 @@ export async function discoverSourceCandidates(
 
     const wpUrl = buildWordPressApiUrl(origin);
     try {
-      const wpRes = await fetchUrlGuarded(wpUrl);
+      const wpRes = await fetchUrlGuarded(wpUrl, { probe: true });
       if (wpRes.ok && detectJsonApi(wpRes.body)) {
         addCandidate(map, {
           feedUrl: origin,
@@ -424,7 +424,7 @@ export async function discoverSourceCandidates(
   if (!res.ok && map.size === 0) {
     if (origin) {
       const wpUrl = buildWordPressApiUrl(origin);
-      const wpRes = await fetchUrlGuarded(wpUrl);
+      const wpRes = await fetchUrlGuarded(wpUrl, { probe: true });
       if (wpRes.ok && detectJsonApi(wpRes.body)) {
         addCandidate(map, {
           feedUrl: origin,

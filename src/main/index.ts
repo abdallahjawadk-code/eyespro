@@ -87,6 +87,7 @@ app.whenReady().then(() => {
   applyPendingRestoreIfAny();
   initDatabase();
   getDb().prepare("UPDATE pipeline_jobs SET status='pending' WHERE status='running'").run();
+  void import('./services/fetch-shield').then((m) => m.resetOpenCircuits()).catch(() => { /* ignore */ });
   getDb().prepare("UPDATE job_queue SET status='pending' WHERE status='running'").run();
   mainWindow = createMainWindow();
   if (getSetting('auto_login') !== '0') autoBindAdminSession(mainWindow.webContents);

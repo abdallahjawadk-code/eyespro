@@ -107,6 +107,20 @@ export function isFeedOnlyMode(host: string): boolean {
   return getCircuitState(host).mode === 'feed_only';
 }
 
+/**
+ * Clear all OPEN circuits — called once at startup so a host that tripped in a
+ * previous session (e.g. while Tor was misbehaving, or under the old 6h cooldown)
+ * gets a fresh chance instead of staying blocked across restarts. A genuinely dead
+ * host simply re-opens (now a short 20-min cooldown).
+ */
+export function resetOpenCircuits(): void {
+  try {
+    getDb().prepare(
+      `UPDATE domain_circuit_state SET mode='normal', failure_count=0, open_until=NULL, updated_at=datetime('now') WHERE mode='open' OR open_until IS NOT NULL`
+    ).run();
+  } catch { /* table may not exist yet */ }
+}
+
 export function recordFetchSuccess(host: string): void {
   if (!host) return;
   getDb()
