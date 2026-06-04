@@ -1,0 +1,1315 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>EyesPro — منصة إدارة ونشر الأخبار واستخبارات المنافسين</title>
+  
+  <!-- SEO Meta Tags -->
+  <meta name="description" content="منصة آيز برو (EyesPro) الاحترافية لرصد وسائل الإعلام والمنافسين، تصفح الويب العميق، وصياغة التقارير الإخبارية المدعومة بالذكاء الاصطناعي.">
+  <meta name="keywords" content="رصد الأخبار, استخبارات المنافسين, الويب العميق, صياغة إخبارية, ذكاء اصطناعي عربي, EyesPro">
+  <meta name="author" content="Masar">
+  
+  <!-- Social Media Meta Tags -->
+  <meta property="og:title" content="EyesPro — منصة ذكاء الأخبار وإدارة المحتوى">
+  <meta property="og:description" content="ارصد منافسيك، ابحث في الويب العميق، واصنع محتواك الإخباري بذكاء وسرعة فائقة مع نظام آيز برو.">
+  <meta property="og:image" content="mockup.png">
+  <meta property="og:type" content="website">
+  
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700;800&family=Outfit:wght@400;600;800&display=swap" rel="stylesheet">
+  
+  <style>
+    :root {
+      --bg-dark: #070913;
+      --bg-card: rgba(16, 20, 38, 0.65);
+      --bg-card-hover: rgba(24, 30, 56, 0.85);
+      --border-color: rgba(255, 255, 255, 0.08);
+      --border-glow: rgba(99, 102, 241, 0.2);
+      
+      --color-primary: #6366f1; /* Indigo */
+      --color-secondary: #a855f7; /* Purple */
+      --color-accent: #10b981; /* Emerald */
+      --color-text-main: #f3f4f6;
+      --color-text-muted: #9ca3af;
+      
+      --font-arabic: 'Cairo', sans-serif;
+      --font-latin: 'Outfit', sans-serif;
+      
+      --glow-shadow: 0 0 30px rgba(99, 102, 241, 0.15);
+      --glow-shadow-emerald: 0 0 30px rgba(16, 185, 129, 0.3);
+    }
+    
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      scroll-behavior: smooth;
+    }
+    
+    body {
+      background-color: var(--bg-dark);
+      color: var(--color-text-main);
+      font-family: var(--font-arabic);
+      overflow-x: hidden;
+      line-height: 1.6;
+    }
+    
+    /* Custom Scrollbar */
+    ::-webkit-scrollbar {
+      width: 10px;
+    }
+    ::-webkit-scrollbar-track {
+      background: var(--bg-dark);
+    }
+    ::-webkit-scrollbar-thumb {
+      background: rgba(99, 102, 241, 0.3);
+      border-radius: 5px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: rgba(99, 102, 241, 0.5);
+    }
+    
+    /* Background grid effect */
+    .bg-grid {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-image: 
+        linear-gradient(rgba(99, 102, 241, 0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(99, 102, 241, 0.03) 1px, transparent 1px);
+      background-size: 40px 40px;
+      z-index: -2;
+      pointer-events: none;
+    }
+    
+    .bg-gradient-glow {
+      position: fixed;
+      top: -10%;
+      right: -10%;
+      width: 60vw;
+      height: 60vw;
+      background: radial-gradient(circle, rgba(168, 85, 247, 0.08) 0%, transparent 70%);
+      z-index: -1;
+      pointer-events: none;
+    }
+    
+    .bg-gradient-glow-left {
+      position: fixed;
+      bottom: -10%;
+      left: -10%;
+      width: 50vw;
+      height: 50vw;
+      background: radial-gradient(circle, rgba(99, 102, 241, 0.08) 0%, transparent 70%);
+      z-index: -1;
+      pointer-events: none;
+    }
+
+    /* Container */
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 0 24px;
+    }
+    
+    /* Navigation Bar */
+    header {
+      border-bottom: 1px solid var(--border-color);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      background: rgba(7, 9, 19, 0.7);
+    }
+    
+    .nav-container {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      height: 80px;
+    }
+    
+    .logo-container {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      text-decoration: none;
+    }
+    
+    .logo-icon {
+      width: 40px;
+      height: 40px;
+      background: linear-gradient(135deg, var(--color-primary), var(--color-secondary));
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 0 15px rgba(99, 102, 241, 0.4);
+      animation: pulse 3s infinite ease-in-out;
+    }
+    
+    .logo-icon svg {
+      width: 24px;
+      height: 24px;
+      fill: white;
+    }
+    
+    .logo-text {
+      font-size: 22px;
+      font-weight: 800;
+      color: white;
+      letter-spacing: 0.5px;
+      font-family: var(--font-latin);
+    }
+    
+    .logo-text span {
+      background: linear-gradient(90deg, #6366f1, #a855f7);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    
+    .nav-links {
+      display: flex;
+      gap: 32px;
+      list-style: none;
+    }
+    
+    .nav-links a {
+      color: var(--color-text-muted);
+      text-decoration: none;
+      font-weight: 600;
+      font-size: 15px;
+      transition: color 0.3s ease;
+    }
+    
+    .nav-links a:hover {
+      color: white;
+    }
+    
+    .btn-nav-download {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--border-color);
+      color: white;
+      padding: 10px 20px;
+      border-radius: 8px;
+      font-weight: 700;
+      text-decoration: none;
+      transition: all 0.3s ease;
+      font-size: 14px;
+    }
+    
+    .btn-nav-download:hover {
+      background: white;
+      color: var(--bg-dark);
+      box-shadow: 0 0 15px rgba(255, 255, 255, 0.1);
+    }
+    
+    /* Hero Section */
+    .hero {
+      padding: 80px 0 120px 0;
+      position: relative;
+    }
+    
+    .hero-grid {
+      display: grid;
+      grid-template-columns: 1.1fr 0.9fr;
+      gap: 60px;
+      align-items: center;
+    }
+    
+    .hero-content {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+    }
+    
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(99, 102, 241, 0.1);
+      border: 1px solid rgba(99, 102, 241, 0.25);
+      color: #93c5fd;
+      padding: 6px 16px;
+      border-radius: 50px;
+      font-size: 13px;
+      font-weight: 700;
+      margin-bottom: 24px;
+    }
+    
+    .badge svg {
+      width: 14px;
+      height: 14px;
+      fill: currentColor;
+    }
+    
+    .hero-title {
+      font-size: 48px;
+      font-weight: 800;
+      line-height: 1.25;
+      color: white;
+      margin-bottom: 20px;
+    }
+    
+    .hero-title span {
+      background: linear-gradient(135deg, #818cf8, #c084fc);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    
+    .hero-desc {
+      font-size: 18px;
+      color: var(--color-text-muted);
+      margin-bottom: 40px;
+      max-width: 580px;
+    }
+    
+    .hero-actions {
+      display: flex;
+      gap: 16px;
+      width: 100%;
+      flex-wrap: wrap;
+    }
+    
+    .btn-primary {
+      background: linear-gradient(135deg, var(--color-accent), #059669);
+      color: white;
+      padding: 16px 32px;
+      border-radius: 10px;
+      font-size: 16px;
+      font-weight: 700;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 12px;
+      box-shadow: var(--glow-shadow-emerald);
+      transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      cursor: pointer;
+    }
+    
+    .btn-primary:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 0 40px rgba(16, 185, 129, 0.5);
+      background: linear-gradient(135deg, #10b981, #047857);
+    }
+    
+    .btn-secondary {
+      background: rgba(16, 20, 38, 0.8);
+      border: 1px solid var(--border-color);
+      color: white;
+      padding: 16px 28px;
+      border-radius: 10px;
+      font-size: 16px;
+      font-weight: 700;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      transition: all 0.3s ease;
+    }
+    
+    .btn-secondary:hover {
+      background: var(--bg-card-hover);
+      border-color: rgba(99, 102, 241, 0.5);
+      transform: translateY(-2px);
+    }
+    
+    .hero-image-container {
+      position: relative;
+    }
+    
+    .hero-image-wrapper {
+      border-radius: 18px;
+      overflow: hidden;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      box-shadow: var(--glow-shadow);
+      background: rgba(10, 10, 20, 0.5);
+      padding: 8px;
+    }
+    
+    .hero-image-wrapper img {
+      width: 100%;
+      height: auto;
+      border-radius: 12px;
+      display: block;
+      transition: transform 0.5s ease;
+    }
+    
+    .hero-image-wrapper:hover img {
+      transform: scale(1.02);
+    }
+    
+    .hero-image-glow {
+      position: absolute;
+      top: -20px;
+      left: -20px;
+      right: -20px;
+      bottom: -20px;
+      background: radial-gradient(circle, rgba(99, 102, 241, 0.15) 0%, transparent 60%);
+      z-index: -1;
+      pointer-events: none;
+    }
+
+    /* Stats Section */
+    .stats {
+      padding: 40px 0;
+      border-top: 1px solid var(--border-color);
+      border-bottom: 1px solid var(--border-color);
+      background: rgba(16, 20, 38, 0.2);
+    }
+    
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 30px;
+      text-align: center;
+    }
+    
+    .stat-item h3 {
+      font-size: 36px;
+      font-weight: 800;
+      font-family: var(--font-latin);
+      background: linear-gradient(135deg, #ffffff, #9ca3af);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      margin-bottom: 8px;
+    }
+    
+    .stat-item p {
+      color: var(--color-text-muted);
+      font-size: 14px;
+      font-weight: 600;
+    }
+
+    /* Features Section */
+    .features {
+      padding: 120px 0;
+    }
+    
+    .section-header {
+      text-align: center;
+      max-width: 700px;
+      margin: 0 auto 80px auto;
+    }
+    
+    .section-title {
+      font-size: 38px;
+      font-weight: 800;
+      color: white;
+      margin-bottom: 16px;
+    }
+    
+    .section-desc {
+      font-size: 16px;
+      color: var(--color-text-muted);
+    }
+    
+    .features-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 30px;
+    }
+    
+    .feature-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 16px;
+      padding: 36px;
+      transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+      position: relative;
+      overflow: hidden;
+    }
+    
+    .feature-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: radial-gradient(circle at top left, rgba(99, 102, 241, 0.15) 0%, transparent 60%);
+      opacity: 0;
+      transition: opacity 0.3s ease;
+      pointer-events: none;
+    }
+    
+    .feature-card:hover {
+      background: var(--bg-card-hover);
+      border-color: rgba(99, 102, 241, 0.3);
+      transform: translateY(-5px);
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+    }
+    
+    .feature-card:hover::before {
+      opacity: 1;
+    }
+    
+    .feature-icon {
+      width: 54px;
+      height: 54px;
+      border-radius: 12px;
+      background: rgba(99, 102, 241, 0.1);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 24px;
+      border: 1px solid rgba(99, 102, 241, 0.2);
+      color: var(--color-primary);
+    }
+    
+    .feature-card:hover .feature-icon {
+      background: var(--color-primary);
+      color: white;
+      transform: scale(1.05);
+      transition: all 0.3s ease;
+    }
+    
+    .feature-icon svg {
+      width: 28px;
+      height: 28px;
+      fill: currentColor;
+    }
+    
+    .feature-title {
+      font-size: 20px;
+      font-weight: 700;
+      color: white;
+      margin-bottom: 12px;
+    }
+    
+    .feature-desc {
+      font-size: 14px;
+      color: var(--color-text-muted);
+      line-height: 1.6;
+    }
+
+    /* Interactive AI Assistant Demo Section */
+    .interactive-demo {
+      padding: 100px 0;
+      background: rgba(16, 20, 38, 0.25);
+      border-top: 1px solid var(--border-color);
+      border-bottom: 1px solid var(--border-color);
+    }
+    
+    .demo-grid {
+      display: grid;
+      grid-template-columns: 0.9fr 1.1fr;
+      gap: 50px;
+      align-items: center;
+    }
+    
+    .demo-content-header {
+      margin-bottom: 30px;
+    }
+    
+    .demo-content-header h2 {
+      font-size: 32px;
+      font-weight: 800;
+      color: white;
+      margin-bottom: 14px;
+    }
+    
+    .demo-triggers {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    
+    .demo-trigger-btn {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      padding: 16px 20px;
+      border-radius: 12px;
+      text-align: right;
+      color: var(--color-text-main);
+      font-family: var(--font-arabic);
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      transition: all 0.3s ease;
+    }
+    
+    .demo-trigger-btn:hover, .demo-trigger-btn.active {
+      background: rgba(99, 102, 241, 0.15);
+      border-color: var(--color-primary);
+      color: white;
+      transform: translateX(-5px);
+    }
+    
+    .demo-trigger-btn .arrow {
+      font-size: 18px;
+      opacity: 0.5;
+      transition: all 0.3s ease;
+    }
+    
+    .demo-trigger-btn:hover .arrow, .demo-trigger-btn.active .arrow {
+      opacity: 1;
+      transform: translateX(-3px);
+    }
+    
+    /* Mock Console Terminal */
+    .mock-console {
+      background: #0d0f1e;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 16px;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      height: 420px;
+    }
+    
+    .console-header {
+      background: #111428;
+      padding: 12px 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    }
+    
+    .console-dots {
+      display: flex;
+      gap: 6px;
+    }
+    
+    .console-dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+    }
+    .console-dot.red { background: #ef4444; }
+    .console-dot.yellow { background: #f59e0b; }
+    .console-dot.green { background: #10b981; }
+    
+    .console-title {
+      font-family: var(--font-latin);
+      font-size: 13px;
+      color: var(--color-text-muted);
+      font-weight: 600;
+    }
+    
+    .console-body {
+      padding: 24px;
+      flex-grow: 1;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      font-size: 14px;
+      font-family: var(--font-arabic);
+    }
+    
+    .console-message {
+      display: flex;
+      gap: 12px;
+      animation: fadeIn 0.3s ease;
+    }
+    
+    .console-avatar {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      font-size: 14px;
+    }
+    
+    .console-avatar.user {
+      background: var(--color-primary);
+      color: white;
+    }
+    
+    .console-avatar.robot {
+      background: var(--color-secondary);
+      color: white;
+      animation: robotPulse 2s infinite alternate;
+    }
+    
+    .console-text {
+      background: rgba(255, 255, 255, 0.03);
+      padding: 12px 16px;
+      border-radius: 12px;
+      max-width: 85%;
+      color: #e5e7eb;
+      border: 1px solid rgba(255, 255, 255, 0.03);
+    }
+    
+    .console-message.user .console-text {
+      background: rgba(99, 102, 241, 0.1);
+      border-color: rgba(99, 102, 241, 0.2);
+    }
+    
+    .console-message.robot .console-text {
+      background: rgba(168, 85, 247, 0.05);
+      border-color: rgba(168, 85, 247, 0.1);
+    }
+
+    .cursor-blink {
+      display: inline-block;
+      width: 2px;
+      height: 15px;
+      background: var(--color-secondary);
+      margin-left: 2px;
+      animation: blink 0.8s infinite;
+      vertical-align: middle;
+    }
+    
+    /* Technical Specs Section */
+    .specs {
+      padding: 120px 0;
+    }
+    
+    .specs-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 24px;
+      padding: 60px;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 60px;
+      align-items: center;
+    }
+    
+    .specs-title {
+      font-size: 32px;
+      font-weight: 800;
+      color: white;
+      margin-bottom: 20px;
+    }
+    
+    .specs-desc {
+      color: var(--color-text-muted);
+      margin-bottom: 30px;
+      font-size: 15px;
+    }
+    
+    .specs-list {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+    
+    .specs-list-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-size: 15px;
+      font-weight: 600;
+    }
+    
+    .specs-list-item svg {
+      width: 20px;
+      height: 20px;
+      color: var(--color-accent);
+      fill: currentColor;
+      flex-shrink: 0;
+    }
+
+    .specs-features-box {
+      background: rgba(7, 9, 19, 0.5);
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      border-radius: 16px;
+      padding: 30px;
+    }
+    
+    .spec-item-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 16px 0;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    }
+    
+    .spec-item-row:last-child {
+      border-bottom: none;
+    }
+    
+    .spec-label {
+      color: var(--color-text-muted);
+      font-weight: 600;
+    }
+    
+    .spec-value {
+      font-family: var(--font-latin);
+      color: white;
+      font-weight: 700;
+    }
+    
+    /* Footer Download Call To Action */
+    .cta-footer {
+      padding: 100px 0;
+      background: radial-gradient(circle at bottom center, rgba(99, 102, 241, 0.15) 0%, transparent 60%);
+      text-align: center;
+      border-top: 1px solid var(--border-color);
+    }
+    
+    .cta-title {
+      font-size: 40px;
+      font-weight: 800;
+      color: white;
+      margin-bottom: 20px;
+    }
+    
+    .cta-desc {
+      font-size: 18px;
+      color: var(--color-text-muted);
+      max-width: 600px;
+      margin: 0 auto 40px auto;
+    }
+    
+    .cta-buttons {
+      display: flex;
+      justify-content: center;
+      gap: 20px;
+      flex-wrap: wrap;
+    }
+    
+    .cta-small-note {
+      margin-top: 20px;
+      font-size: 13px;
+      color: var(--color-text-muted);
+    }
+    
+    .cta-small-note a {
+      color: var(--color-primary);
+      text-decoration: none;
+    }
+    
+    footer {
+      padding: 40px 0;
+      border-top: 1px solid rgba(255, 255, 255, 0.05);
+      background: #04050a;
+    }
+    
+    .footer-container {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 20px;
+    }
+    
+    .footer-copyright {
+      color: var(--color-text-muted);
+      font-size: 14px;
+    }
+    
+    .footer-brand {
+      font-weight: 800;
+      color: white;
+    }
+    
+    /* Keyframe Animations */
+    @keyframes pulse {
+      0%, 100% {
+        box-shadow: 0 0 15px rgba(99, 102, 241, 0.4);
+      }
+      50% {
+        box-shadow: 0 0 30px rgba(99, 102, 241, 0.7);
+      }
+    }
+    
+    @keyframes blink {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0; }
+    }
+    
+    @keyframes robotPulse {
+      from {
+        box-shadow: 0 0 5px rgba(168, 85, 247, 0.5);
+      }
+      to {
+        box-shadow: 0 0 15px rgba(168, 85, 247, 0.8);
+      }
+    }
+    
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    
+    /* Responsive Design */
+    @media (max-width: 968px) {
+      .hero-grid {
+        grid-template-columns: 1fr;
+        text-align: center;
+        gap: 40px;
+      }
+      
+      .badge, .hero-content {
+        align-items: center;
+      }
+      
+      .hero-actions {
+        justify-content: center;
+      }
+      
+      .features-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+      
+      .demo-grid {
+        grid-template-columns: 1fr;
+        gap: 40px;
+      }
+      
+      .specs-card {
+        grid-template-columns: 1fr;
+        padding: 40px;
+      }
+      
+      .stats-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+    
+    @media (max-width: 640px) {
+      .hero-title {
+        font-size: 36px;
+      }
+      
+      .features-grid {
+        grid-template-columns: 1fr;
+      }
+      
+      .stats-grid {
+        grid-template-columns: 1fr;
+      }
+      
+      .nav-links {
+        display: none; /* simple mobile hide */
+      }
+      
+      .footer-container {
+        flex-direction: column;
+        text-align: center;
+      }
+    }
+  </style>
+</head>
+<body>
+  
+  <div class="bg-grid"></div>
+  <div class="bg-gradient-glow"></div>
+  <div class="bg-gradient-glow-left"></div>
+  
+  <!-- Navigation Header -->
+  <header>
+    <div class="container nav-container">
+      <a href="#" class="logo-container">
+        <div class="logo-icon">
+          <!-- Custom Robot Eye SVG Icon -->
+          <svg viewBox="0 0 24 24">
+            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 17h-2v-2h2v2zm2.07-7.75l-.9.92C13.45 12.9 13 13.5 13 15h-2v-.5c0-1.1.45-2.1 1.17-2.83l1.24-1.26c.37-.36.59-.86.59-1.41 0-1.1-.9-2-2-2s-2 .9-2 2H7c0-2.76 2.24-5 5-5s5 2.24 5 5c0 1.04-.42 1.99-1.07 2.75z"/>
+          </svg>
+        </div>
+        <span class="logo-text">Eyes<span>Pro</span></span>
+      </a>
+      
+      <ul class="nav-links">
+        <li><a href="#features">المميزات</a></li>
+        <li><a href="#demo">العرض التفاعلي</a></li>
+        <li><a href="#specs">المواصفات الفنية</a></li>
+        <li><a href="#download">التحميل</a></li>
+      </ul>
+      
+      <a href="https://github.com/abdallahjawadk-code/eyespro/releases/download/v1.0.5/EyesPro-Setup-1.0.5.exe" class="btn-nav-download">تحميل v1.0.5</a>
+    </div>
+  </header>
+  
+  <!-- Hero Section -->
+  <section class="hero">
+    <div class="container hero-grid">
+      <div class="hero-content">
+        <div class="badge">
+          <svg viewBox="0 0 24 24"><path d="M23 12l-2.44-2.79.34-3.69-3.61-.82-1.89-3.2L12 2.96 8.6 1.5 6.71 4.7l-3.61.81.34 3.7L1 12l2.44 2.79-.34 3.69 3.61.82 1.89 3.2 3.4-1.46 3.4 1.46 1.89-3.2 3.61-.82-.34-3.69L23 12zm-12.91 4.72l-3.8-3.81 1.48-1.48 2.32 2.33 5.85-5.87 1.48 1.48-7.33 7.35z"/></svg>
+          تحديث إصدار v1.0.5 متاح الآن
+        </div>
+        <h1 class="hero-title">
+          منصة ذكاء الأخبار وإدارة المحتوى الإخباري <span>آيز برو</span>
+        </h1>
+        <p class="hero-desc">
+          شريكك الذكي لرصد منافسيك، تصفح الويب العميق والآمن، صياغة تقارير الأخبار ثنائية اللغة، ونشرها باحترافية وسرعة من مكان واحد.
+        </p>
+        <div class="hero-actions">
+          <a href="https://github.com/abdallahjawadk-code/eyespro/releases/download/v1.0.5/EyesPro-Setup-1.0.5.exe" class="btn-primary">
+            <svg style="width: 24px; height: 24px;" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M5 20h14v-2H5v2zM19 9h-4V3H9v6H5l7 7 7-7z"/>
+            </svg>
+            تحميل للويندوز (installer)
+          </a>
+          <a href="https://github.com/abdallahjawadk-code/eyespro/releases/download/v1.0.5/EyesPro-1.0.5-Portable.exe" class="btn-secondary">
+            <svg style="width: 20px; height: 20px;" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M4 6H2v14c0 1.1.9 2 2 2h14v-2H4V6zm16-4H8c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H8V4h12v12z"/>
+            </svg>
+            نسخة محمولة (Portable)
+          </a>
+        </div>
+      </div>
+      
+      <div class="hero-image-container">
+        <div class="hero-image-wrapper">
+          <img src="mockup.png" alt="EyesPro Dashboard interface mockup">
+        </div>
+        <div class="hero-image-glow"></div>
+      </div>
+    </div>
+  </section>
+  
+  <!-- Stats Counter Bar -->
+  <section class="stats">
+    <div class="container stats-grid">
+      <div class="stat-item">
+        <h3>100%</h3>
+        <p>خصوصية محلية (Offline-First)</p>
+      </div>
+      <div class="stat-item">
+        <h3>8.5x</h3>
+        <p>سرعة جلب وتحليل الأخبار والاتجاهات</p>
+      </div>
+      <div class="stat-item">
+        <h3>v1.0.5</h3>
+        <p>أحدث إصدار مستقر وآمن</p>
+      </div>
+      <div class="stat-item">
+        <h3>24/7</h3>
+        <p>حماية وخصوصية عبر شبكة Tor</p>
+      </div>
+    </div>
+  </section>
+  
+  <!-- Features Section -->
+  <section id="features" class="features">
+    <div class="container">
+      <div class="section-header">
+        <h2 class="section-title">حلول مبتكرة لتطوير غرف الأخبار</h2>
+        <p class="section-desc">تم تصميم EyesPro كمنصة حديثة لتقصي الحقائق والتقارير الإخبارية، مزودة بالخصائص الأقوى تقنياً:</p>
+      </div>
+      
+      <div class="features-grid">
+        <!-- Feature 1 -->
+        <div class="feature-card">
+          <div class="feature-icon">
+            <svg viewBox="0 0 24 24"><path d="M12 22C6.477 22 2 17.523 2 12S6.477 2 12 2s10 4.477 10 10-4.477 10-10 10zm-1-11v6h2v-6h-2zm0-4v2h2V7h-2z"/></svg>
+          </div>
+          <h3 class="feature-title">ذكاء رصد المنافسين</h3>
+          <p class="feature-desc">خوارزمية الرصد الذكي لتحليل العناوين والاتجاهات سيميائياً، تصنيف المواضيع الساخنة فورياً، وإشعارات الفروقات المرئية للصحف والقنوات الإخبارية.</p>
+        </div>
+        <!-- Feature 2 -->
+        <div class="feature-card">
+          <div class="feature-icon">
+            <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.53c-.26-.81-1-1.4-1.9-1.4h-1v-3c0-.55-.45-1-1-1h-6v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.4z"/></svg>
+          </div>
+          <h3 class="feature-title">التنقيب في الويب العميق</h3>
+          <p class="feature-desc">تصفح وقراءة المواقع ومصادر الشبكات العميقة بخصوصية وسرية تامة وبطريقة آلية بالكامل دون التعرض للحظر الجغرافي.</p>
+        </div>
+        <!-- Feature 3 -->
+        <div class="feature-card">
+          <div class="feature-icon">
+            <svg viewBox="0 0 24 24"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>
+          </div>
+          <h3 class="feature-title">المساعد الذكي (AI)</h3>
+          <p class="feature-desc">صياغة التقارير، الترجمة الاحترافية، استخلاص الحقائق، إعادة الصياغة الإبداعية، مع دعم الأوامر الصوتية وتحويلها لنصوص بنموذج Whisper المحلي.</p>
+        </div>
+        <!-- Feature 4 -->
+        <div class="feature-card">
+          <div class="feature-icon">
+            <svg viewBox="0 0 24 24"><path d="M12 2A10 10 0 0 0 2 12a10 10 0 0 0 10 10 10 10 0 0 0 10-10A10 10 0 0 0 12 2zm-2 14.5v-9l6 4.5-6 4.5z"/></svg>
+          </div>
+          <h3 class="feature-title">محرك الوسائط المتكامل</h3>
+          <p class="feature-desc">تنزيل المحتوى المرئي من كافة منصات التواصل والويب، مشغل وسائط مدمج فائق يدعم كافة التنسيقات (بما فيها AV1)، وميزة المشاركة بنقرة واحدة.</p>
+        </div>
+        <!-- Feature 5 -->
+        <div class="feature-card">
+          <div class="feature-icon">
+            <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg>
+          </div>
+          <h3 class="feature-title">ربط واستقرار الشبكات</h3>
+          <p class="feature-desc">اتصال معزز وسريع وخادم وكيل محلي بالإضافة للتحديث التلقائي لشبكة Tor لحماية الهوية والمحافظة على ديمومة الاتصال بالأخبار العالمية.</p>
+        </div>
+        <!-- Feature 6 -->
+        <div class="feature-card">
+          <div class="feature-icon">
+            <svg viewBox="0 0 24 24"><path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z"/></svg>
+          </div>
+          <h3 class="feature-title">خصوصية وحماية فائقة</h3>
+          <p class="feature-desc">تشفير وحماية شاشات العرض للرائد (Renderer Protection)، مترجم bytecode للعملية الرئيسية لضمان أمان النظام ضد محاولات الحقن الرقمي.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+  
+  <!-- Interactive AI Assistant Demo -->
+  <section id="demo" class="interactive-demo">
+    <div class="container demo-grid">
+      <div class="demo-content">
+        <div class="demo-content-header">
+          <span class="badge" style="background: rgba(168, 85, 247, 0.1); border-color: rgba(168, 85, 247, 0.25); color: #e9d5ff;">مساعد ذكي تفاعلي</span>
+          <h2>اختبر المساعد الذكي المدمج في النظام</h2>
+          <p class="section-desc">اضغط على الخيارات بالأسفل لترى كيف يقوم روبوت المساعد الذكي لآيز برو (EyesPro AI Assistant) بتحليل التقارير وصياغتها لحظياً وبدقة فائقة.</p>
+        </div>
+        
+        <div class="demo-triggers">
+          <button class="demo-trigger-btn active" onclick="simulateAssistant(0)">
+            <span>1. رصد وتحليل كفاءة المنافس</span>
+            <span class="arrow">←</span>
+          </button>
+          <button class="demo-trigger-btn" onclick="simulateAssistant(1)">
+            <span>2. ترجمة ذكية ثنائية الاتجاه مع التصحيح</span>
+            <span class="arrow">←</span>
+          </button>
+          <button class="demo-trigger-btn" onclick="simulateAssistant(2)">
+            <span>3. استخبار وتحقيق في الويب العميق</span>
+            <span class="arrow">←</span>
+          </button>
+        </div>
+      </div>
+      
+      <!-- Mock Console Terminal -->
+      <div class="mock-console">
+        <div class="console-header">
+          <div class="console-dots">
+            <div class="console-dot red"></div>
+            <div class="console-dot yellow"></div>
+            <div class="console-dot green"></div>
+          </div>
+          <div class="console-title">EYESPRO_ASSISTANT_TERMINAL.EXE</div>
+        </div>
+        
+        <div class="console-body" id="console-body">
+          <!-- Initial Welcome Messages -->
+          <div class="console-message robot">
+            <div class="console-avatar robot">🤖</div>
+            <div class="console-text">أهلاً بك في وحدة التحكم الذكية لـ <strong>EyesPro</strong>. اختر أحد الأوامر البرمجية من القائمة للبدء.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+  
+  <!-- Technical Specifications Section -->
+  <section id="specs" class="specs">
+    <div class="container">
+      <div class="specs-card">
+        <div>
+          <h2 class="specs-title">تكنولوجيا متقدمة وخفيفة الوزن</h2>
+          <p class="specs-desc">
+            تم بناء EyesPro باستخدام بيئة Electron فائقة الأداء ولغة TypeScript، مع التركيز التام على استقرار الأداء وخفة استهلاك الذاكرة وتخزين البيانات المحلي.
+          </p>
+          <ul class="specs-list">
+            <li class="specs-list-item">
+              <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
+              قاعدة بيانات SQLite محلية وآمنة ومبنية للسرعة القصوى
+            </li>
+            <li class="specs-list-item">
+              <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
+              حماية ضد سحب الكود المصدر بواسطة V8 Bytecode compiler
+            </li>
+            <li class="specs-list-item">
+              <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
+              إمكانية التشغيل الفوري دون تثبيت (Portable Mode)
+            </li>
+            <li class="specs-list-item">
+              <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
+              إرجاع وتحليل البيانات بشكل فوري دون تأخر
+            </li>
+          </ul>
+        </div>
+        
+        <div class="specs-features-box">
+          <div class="spec-item-row">
+            <span class="spec-label">نظام التشغيل المطلوب</span>
+            <span class="spec-value">Windows 10 / 11 (64-bit)</span>
+          </div>
+          <div class="spec-item-row">
+            <span class="spec-label">الإصدار الحالي المستقر</span>
+            <span class="spec-value">v1.0.5</span>
+          </div>
+          <div class="spec-item-row">
+            <span class="spec-label">لغات واجهة المستخدم</span>
+            <span class="spec-value">العربية / English</span>
+          </div>
+          <div class="spec-item-row">
+            <span class="spec-label">محرك المساعد الذكي</span>
+            <span class="spec-value">بث متعدد (Local RAG + API cloud)</span>
+          </div>
+          <div class="spec-item-row">
+            <span class="spec-label">التوقيع الرقمي للمثبّت</span>
+            <span class="spec-value">SHA-256 Signature</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+  
+  <!-- Call to Action Download Footer -->
+  <section id="download" class="cta-footer">
+    <div class="container">
+      <h2 class="cta-title">ابدأ حملتك واستمتع بقوة التحليل الإخباري اليوم</h2>
+      <p class="cta-desc">حمل منصة EyesPro النسخة v1.0.5 على جهازك ووفر الوقت والجهد في صياغة وإدارة ومتابعة المحتوى الإخباري.</p>
+      
+      <div class="cta-buttons">
+        <a href="https://github.com/abdallahjawadk-code/eyespro/releases/download/v1.0.5/EyesPro-Setup-1.0.5.exe" class="btn-primary">
+          <svg style="width: 24px; height: 24px;" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M5 20h14v-2H5v2zM19 9h-4V3H9v6H5l7 7 7-7z"/>
+          </svg>
+          تحميل المثبّت الرئيسي (Setup)
+        </a>
+        <a href="https://github.com/abdallahjawadk-code/eyespro/releases/download/v1.0.5/EyesPro-1.0.5-Portable.exe" class="btn-secondary" style="background: rgba(16, 20, 38, 0.9);">
+          <svg style="width: 20px; height: 20px;" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M4 6H2v14c0 1.1.9 2 2 2h14v-2H4V6zm16-4H8c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H8V4h12v12z"/>
+          </svg>
+          تحميل النسخة المحمولة (Portable)
+        </a>
+      </div>
+      
+      <p class="cta-small-note">
+        هل تواجه أي مشاكل؟ يرجى مراجعة <a href="https://github.com/abdallahjawadk-code/eyespro">المستودع الرئيسي على GitHub</a> أو مراجعة ملف الإرشادات.
+      </p>
+    </div>
+  </section>
+  
+  <!-- Footer -->
+  <footer>
+    <div class="container footer-container">
+      <div class="footer-copyright">
+        حقوق الطبع والنشر © 2026 <span class="footer-brand">مسار (Masar)</span>. جميع الحقوق محفوظة.
+      </div>
+      
+      <div class="footer-copyright">
+        صمم بواسطة الذكاء الاصطناعي بكل حب 💙 لـ EyesPro
+      </div>
+    </div>
+  </footer>
+  
+  <!-- Interactive Console Logic Script -->
+  <script>
+    const demoData = [
+      {
+        prompt: "قم برصد منافسنا (موقع الأخبار التقنية) وحلل الفروقات في آخر مقال.",
+        response: `[رصد ذكي للمنافسين] 🔍 \n\nتم الاتصال بموقع المنافس وجلب البيانات:\n1. **موضوع المقال:** إطلاق الذكاء الاصطناعي الجديد Masar AI.\n2. **التغييرات المرصودة:** تم الكشف عن فروقات نصية مرئية (Visual Diff) بنسبة **18%** في الفقرة الخاصة بنقاط الأسعار مقارنة بالنسخة المخزنة لدينا أمس.\n\n💡 **توصية للمحرر:** هناك تعديل في مواصفات الأجهزة والخطط، مقترح مراجعة الجدول في لوحة المراقبة ونشر تحديث موازٍ.`
+      },
+      {
+        prompt: "ترجم الخبر التالي إلى الإنجليزية وقم بإصلاح الأخطاء اللغوية تلقائياً.",
+        response: `[مساعد الترجمة والتصحيح] 📝\n\n**النص الأصلي (مصححاً):** "أعلنت منصة آيز برو اليوم عن وصول إصدارها v1.0.5 المحسّن بالكامل."\n\n**الترجمة الإنجليزية (Professional Translation):**\n"Today, the EyesPro platform announced the arrival of its fully optimized v1.0.5 release."\n\n✨ **إشعار الجودة:** تم إزالة تكرار الكلمات غير اللازم وصياغة الجمل بأسلوب يناسب وكالات الأنباء العالمية.`
+      },
+      {
+        prompt: "ابحث في مصادر الويب العميق بشكل مجهول عن الكلمة المفتاحية (تهديدات سيبرانية جديدة).",
+        response: `[استخبارات الويب العميق] 🕵️‍♂️ (نشط عبر شبكة Tor المجهولة)\n\nجاري تنشيط البروكسي وبدء الاستقصاء:\n* تم فحص 14 مصدر عميق بنجاح.\n* **النتيجة:** العثور على موضوعين ساخنين يتعلقان بثغرات نظام التشغيل الحديثة (Zero-day CVEs).\n\n⚠️ **النتيجة الكلية:** تم إضافتها لجدول التحليل السلوكي وأرسلنا إشعارات عاجلة للمشرفين لوقاية الخوادم.`
+      }
+    ];
+    
+    let isTyping = false;
+    
+    function simulateAssistant(index) {
+      if (isTyping) return;
+      isTyping = true;
+      
+      // Update active tab buttons
+      const buttons = document.querySelectorAll('.demo-trigger-btn');
+      buttons.forEach((btn, idx) => {
+        if (idx === index) {
+          btn.classList.add('active');
+        } else {
+          btn.classList.remove('active');
+        }
+      });
+      
+      const consoleBody = document.getElementById('console-body');
+      
+      // Clear console except initial robot welcome
+      consoleBody.innerHTML = `
+        <div class="console-message robot">
+          <div class="console-avatar robot">🤖</div>
+          <div class="console-text">أهلاً بك في وحدة التحكم الذكية لـ <strong>EyesPro</strong>. اختر أحد الأوامر البرمجية من القائمة للبدء.</div>
+        </div>
+      `;
+      
+      // Add User Message (Input Prompt)
+      const userMsgDiv = document.createElement('div');
+      userMsgDiv.className = 'console-message user';
+      userMsgDiv.innerHTML = `
+        <div class="console-avatar user">👤</div>
+        <div class="console-text" id="user-typing-text"></div>
+      `;
+      consoleBody.appendChild(userMsgDiv);
+      
+      const promptText = demoData[index].prompt;
+      let promptCharIndex = 0;
+      
+      // Type user prompt
+      function typeUserPrompt() {
+        if (promptCharIndex < promptText.length) {
+          document.getElementById('user-typing-text').innerHTML = promptText.substring(0, promptCharIndex + 1) + '<span class="cursor-blink"></span>';
+          promptCharIndex++;
+          setTimeout(typeUserPrompt, 30);
+        } else {
+          // Remove cursor blink from user text
+          document.getElementById('user-typing-text').innerHTML = promptText;
+          
+          // Show robot thinking animation
+          setTimeout(triggerRobotResponse, 500);
+        }
+        consoleBody.scrollTop = consoleBody.scrollHeight;
+      }
+      
+      typeUserPrompt();
+      
+      function triggerRobotResponse() {
+        // Add Robot Message container
+        const robotMsgDiv = document.createElement('div');
+        robotMsgDiv.className = 'console-message robot';
+        robotMsgDiv.innerHTML = `
+          <div class="console-avatar robot">🤖</div>
+          <div class="console-text" id="robot-typing-text"><span class="cursor-blink"></span></div>
+        `;
+        consoleBody.appendChild(robotMsgDiv);
+        consoleBody.scrollTop = consoleBody.scrollHeight;
+        
+        const responseText = demoData[index].response;
+        let responseCharIndex = 0;
+        
+        function typeRobotResponse() {
+          if (responseCharIndex < responseText.length) {
+            // Replace newlines with <br> and format text nicely
+            let chunk = responseText.substring(0, responseCharIndex + 1);
+            let formattedChunk = chunk
+              .replace(/\n/g, '<br>')
+              .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+              .replace(/\* /g, '• ')
+              .replace(/\[([^\]]+)\]/g, '<strong style="color:var(--color-secondary)">[$1]</strong>');
+            
+            document.getElementById('robot-typing-text').innerHTML = formattedChunk + '<span class="cursor-blink"></span>';
+            responseCharIndex++;
+            setTimeout(typeRobotResponse, 15);
+          } else {
+            // Done typing, remove cursor blink
+            let formattedFinal = responseText
+              .replace(/\n/g, '<br>')
+              .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+              .replace(/\* /g, '• ')
+              .replace(/\[([^\]]+)\]/g, '<strong style="color:var(--color-secondary)">[$1]</strong>');
+            document.getElementById('robot-typing-text').innerHTML = formattedFinal;
+            isTyping = false;
+          }
+          consoleBody.scrollTop = consoleBody.scrollHeight;
+        }
+        
+        typeRobotResponse();
+      }
+    }
+  </script>
+</body>
+</html>
