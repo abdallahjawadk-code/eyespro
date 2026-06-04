@@ -10,6 +10,7 @@
  */
 
 import { BrowserWindow, session } from 'electron';
+import * as cheerio from 'cheerio';
 import { withRetry, getRandomFingerprint, buildStealthScript, randomDelay } from '../net/stealth-utils';
 import { getNextProxy, getProxyRules, reportProxyFailure, reportProxySuccess } from '../net/proxy-pool';
 import { createLogger } from '../logger';
@@ -334,7 +335,153 @@ export async function scrapeFacebookPage(pageUrl: string): Promise<FbPost[]> {
   });
 }
 
+function parseMbasicFacebookHtml(html: string): FbPost[] {
+  const $ = cheerio.load(html);
+  const posts: FbPost[] = [];
+  const seen = new Set<string>();
+
+  // Mobile basic structures:
+  // 1. Stories are typically contained in divs with role="article" or structured containers under #m_newsfeed_stream.
+  // 2. Sometimes story bodies have .story_body_container.
+  const containers = $('article, div[role="article"], div.story_body_container, #m_newsfeed_stream > div, div[data-ft]');
+  
+  containers.each((_, el) => {
+    const container = $(el);
+    
+    // Find text
+    let text = '';
+    const msgEl = container.find('div.msg, p, span.msg, [dir="auto"]');
+    if (msgEl.length > 0) {
+      text = msgEl.map((_, t) => $(t).text().trim()).get().filter(Boolean).join('\n');
+    }
+    
+    if (!text) {
+      text = container.clone().find('script, style, a, abbr').remove().end().text().trim();
+    }
+    
+    if (!text || text.length < 25) return;
+
+    // Find links
+    let link = null;
+    const linkEl = container.find('a[href*="/posts/"], a[href*="/permalink.php"], a[href*="story_fbid="], a[href*="/story.php"]');
+    if (linkEl.length > 0) {
+      const rawHref = linkEl.first().attr('href') || '';
+      if (rawHref) {
+        try {
+          const u = new URL(rawHref, 'https://mbasic.facebook.com');
+          link = u.toString().replace('mbasic.facebook.com', 'www.facebook.com');
+        } catch {
+          link = rawHref;
+        }
+      }
+    }
+
+    // Extract post ID
+    let postId = null;
+    if (link) {
+      const m = link.match(/\/posts\/(\d+)/) || link.match(/story_fbid=(\d+)/) || link.match(/permalink\/(\d+)/) || link.match(/id=(\d+)/);
+      if (m) postId = m[1];
+    }
+
+    const key = postId || text.slice(0, 80);
+    if (seen.has(key)) return;
+    seen.add(key);
+
+    // Parse timestamp
+    let timestamp = null;
+    const timeEl = container.find('abbr, time');
+    if (timeEl.length > 0) {
+      const utime = timeEl.first().attr('data-utime');
+      if (utime) {
+        const seconds = parseInt(utime, 10);
+        if (!isNaN(seconds)) {
+          const d = new Date(seconds * 1000);
+          if (!isNaN(d.getTime())) {
+            timestamp = d.toISOString();
+          }
+        }
+      }
+      if (!timestamp) {
+        timestamp = timeEl.first().text().trim() || null;
+      }
+    }
+
+    posts.push({
+      text: text.slice(0, 2000),
+      link,
+      timestamp,
+      postId
+    });
+  });
+
+  return posts;
+}
+
+async function scrapeViaMobileBasic(pageUrl: string): Promise<FbPost[] | null> {
+  const cleanUrl = pageUrl.replace(/www\.facebook\.com/, 'mbasic.facebook.com');
+  const url = cleanUrl.startsWith('http') ? cleanUrl : `https://mbasic.facebook.com/${pageUrl}`;
+  const fp = getRandomFingerprint();
+  const proxy = getNextProxy();
+
+  let win: BrowserWindow | null = null;
+  try {
+    ensureFbSessionHooks();
+    session.fromPartition(FB_PARTITION).setUserAgent(fp.ua);
+    if (proxy) {
+      await session.fromPartition(FB_PARTITION).setProxy({ proxyRules: getProxyRules(proxy) });
+    }
+
+    win = new BrowserWindow({
+      show: false,
+      width: 1280,
+      height: 900,
+      webPreferences: {
+        partition: FB_PARTITION,
+        nodeIntegration: false,
+        contextIsolation: true,
+      },
+    });
+
+    win.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
+
+    // Load page
+    await Promise.race([
+      new Promise<void>((res, rej) => {
+        const t = setTimeout(() => rej(new Error('mbasic load timeout')), LOAD_TIMEOUT);
+        win!.webContents.once('did-finish-load', () => { clearTimeout(t); res(); });
+      }),
+      win.loadURL(url),
+    ]);
+
+    await randomDelay(1500, 3000);
+    const html = await win.webContents.executeJavaScript('document.documentElement.outerHTML') as string;
+    
+    if (proxy) reportProxySuccess(proxy.host, proxy.port);
+
+    const posts = parseMbasicFacebookHtml(html);
+    if (posts.length > 0) {
+      log.info(`mbasic scraped ${posts.length} posts for ${url}`);
+      return posts;
+    }
+  } catch (e) {
+    if (proxy) reportProxyFailure(proxy.host, proxy.port);
+    log.warn(`mbasic Facebook scrape failed for ${url}: ${(e as Error).message}`);
+  } finally {
+    if (win && !win.isDestroyed()) win.close();
+  }
+  return null;
+}
+
 async function _scrapeFb(pageUrl: string): Promise<FbPost[]> {
+  // Try mbasic scraper first
+  try {
+    const fromMbasic = await scrapeViaMobileBasic(pageUrl);
+    if (fromMbasic && fromMbasic.length > 0) return fromMbasic;
+  } catch (e) {
+    log.warn(`mbasic fallback triggered due to error: ${(e as Error).message}`);
+  }
+
+  log.info(`mbasic unavailable for ${pageUrl}, falling back to desktop browser scrape`);
   const url = pageUrl.startsWith('http') ? pageUrl : `https://www.facebook.com/${pageUrl}`;
   const fp = getRandomFingerprint();
   const proxy = getNextProxy();

@@ -431,6 +431,23 @@ export interface CompetitorSnapshot {
   thumbnail_url: string | null;
 }
 
+export interface SnapshotCluster {
+  clusterId: number;
+  main: CompetitorSnapshot;
+  duplicates: CompetitorSnapshot[];
+  diffSummary: string;
+}
+
+export interface TopicAlert {
+  id: string;
+  topicTitle: string;
+  summary: string;
+  severity: 'high' | 'medium';
+  snapshots: { id: number; monitorName: string; title: string; publishedAt: string | null }[];
+  snapshotIds: number[];
+}
+
+
 export interface EyesProApi {
   auth: {
     login: (payload: LoginPayload) => Inv<LoginResult>;
@@ -971,6 +988,9 @@ export interface EyesProApi {
     markRead: (snapshotId: number) => Inv<void>;
     rewrite: (snapshotId: number) => Inv<{ articleId: number }>;
     unreadCount: () => Inv<number>;
+    getSemanticClusters: (limit?: number) => Inv<SnapshotCluster[]>;
+    synthesizeNews: (snapshotIds: number[]) => Inv<number>;
+    getTopicAlerts: () => Inv<TopicAlert[]>;
   };
   instagram: {
     login:      () => Inv<void>;

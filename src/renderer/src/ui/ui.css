@@ -143,6 +143,18 @@
 
 .ui-card-body { padding: 16px 18px; }
 
+.ui-card--scrollable {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+.ui-card--scrollable .ui-card-body {
+  flex: 1;
+  overflow-y: auto;
+  min-height: 0;
+}
+
+
 .ui-stat-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));

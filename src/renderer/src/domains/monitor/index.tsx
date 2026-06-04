@@ -1,9 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import type { CompetitorMonitor, CompetitorSnapshot, DownloadJob, DownloadQuality, MonitorSourceType } from '../../../../shared/api-types';
+import type { CompetitorMonitor, CompetitorSnapshot, DownloadJob, DownloadQuality, MonitorSourceType, SnapshotCluster, TopicAlert } from '../../../../shared/api-types';
 import { Badge, Btn, Card, Empty, Field, Input, Loading, Msg, Panel, Toolbar } from '../../ui';
 import { Workspace } from '../../shell/Workspace';
 import { VideoPlayer } from '../../components/media/VideoPlayer';
+import { SemanticForceGraph } from './components/SemanticForceGraph';
+import { VisualDiff } from './components/VisualDiff';
 
 // ─── Source type meta ─────────────────────────────────────────────────────────
 
@@ -82,6 +84,13 @@ export function MonitorDomain() {
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const [crawling, setCrawling] = useState<number | null>(null);
 
+  // Competitor intelligence upgrades state
+  const [clusters, setClusters] = useState<SnapshotCluster[]>([]);
+  const [alerts, setAlerts] = useState<TopicAlert[]>([]);
+  const [activeTab, setActiveTab] = useState<'snapshots' | 'clusters' | 'alerts'>('snapshots');
+  const [expandedDiffSnapId, setExpandedDiffSnapId] = useState<number | null>(null);
+  const [synthesizing, setSynthesizing] = useState(false);
+
   // Add-monitor form state
   const [addName, setAddName] = useState('');
   const [addType, setAddType] = useState<MonitorSourceType>('rss');
@@ -103,17 +112,21 @@ export function MonitorDomain() {
 
   const loadAll = useCallback(async (silent = false) => {
     if (!silent) setLoading(true);
-    const [m, u] = await Promise.all([
+    const [m, u, cRes, aRes] = await Promise.all([
       window.eyespro.monitor.list(),
       window.eyespro.monitor.unreadCount(),
+      window.eyespro.monitor.getSemanticClusters(),
+      window.eyespro.monitor.getTopicAlerts()
     ]);
     if (m.ok && m.data) {
       setMonitors(m.data);
       if (m.data.length > 0 && activeId === null) setActiveId(m.data[0].id);
     }
     if (u.ok && u.data != null) setUnread(u.data);
+    if (cRes.ok && cRes.data) setClusters(cRes.data);
+    if (aRes.ok && aRes.data) setAlerts(aRes.data);
     if (!silent) setLoading(false);
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [activeId]);
 
   const loadSnapshots = useCallback(async (monitorId: number) => {
     const res = await window.eyespro.monitor.snapshots(monitorId);
@@ -257,6 +270,20 @@ export function MonitorDomain() {
       setSnapshots((prev) => prev.map((s) => s.id === snapshotId ? { ...s, is_read: 1 } : s));
     } else {
       setMsg({ ok: false, text: res.error ?? t('monitor.rewriteFailed') });
+    }
+  }
+
+  async function handleSynthesize(ids: number[]) {
+    setSynthesizing(true);
+    setMsg(null);
+    const res = await window.eyespro.monitor.synthesizeNews(ids);
+    setSynthesizing(false);
+    if (res.ok) {
+      setMsg({ ok: true, text: 'تم دمج وتوليف الأخبار بنجاح ونقلها للمسودات.' });
+      await loadAll(true);
+      if (activeId !== null) void loadSnapshots(activeId);
+    } else {
+      setMsg({ ok: false, text: res.error || 'فشل دمج وتوليف الأخبار.' });
     }
   }
 
@@ -503,143 +530,285 @@ export function MonitorDomain() {
           {/* ── Right column: snapshots ── */}
           <Card
             title={
-              activeMonitor
-                ? `${sourceIcon(activeMonitor.source_type)} ${activeMonitor.name}${unreadSnaps > 0 ? ` — ${unreadSnaps} ${t('monitor.unread')}` : ''}`
-                : `📰 ${t('monitor.snapshots')}`
+              activeTab === 'clusters'
+                ? '🕸️ خريطة الترابط الدلالي بين المنافسين'
+                : activeTab === 'alerts'
+                  ? '🚨 تنبيهات النشاط والتحليل الذكي'
+                  : activeMonitor
+                    ? `${sourceIcon(activeMonitor.source_type)} ${activeMonitor.name}${unreadSnaps > 0 ? ` — ${unreadSnaps} ${t('monitor.unread')}` : ''}`
+                    : `📰 ${t('monitor.snapshots')}`
             }
           >
-            {!activeMonitor ? (
-              <Empty icon="📰" title={t('monitor.selectMonitor')} />
-            ) : snapshots.length === 0 ? (
-              <Empty icon="📰" title={t('monitor.noSnapshots')} desc={t('monitor.noSnapshotsHint')} />
+            {/* ── Analysis tab bar (harmonised with the app's pill selectors) ── */}
+            <div style={{ display: 'flex', gap: 6, marginBottom: 16, borderBottom: '1px solid var(--border)', paddingBottom: 12, flexWrap: 'wrap' }}>
+              {([
+                { key: 'snapshots', icon: '📰', label: 'اللقطات الإخبارية', count: activeMonitor ? snapshots.length : null, danger: false },
+                { key: 'clusters', icon: '🕸️', label: 'خريطة الترابط الدلالي', count: clusters.length, danger: false },
+                { key: 'alerts', icon: '🚨', label: 'التنبؤ والتحليل الذكي', count: alerts.length, danger: true },
+              ] as const).map((tab) => {
+                const active = activeTab === tab.key;
+                return (
+                  <button
+                    key={tab.key}
+                    onClick={() => setActiveTab(tab.key)}
+                    style={{
+                      display: 'inline-flex', alignItems: 'center', gap: 6,
+                      padding: '6px 12px', borderRadius: 8, cursor: 'pointer', fontSize: 12,
+                      border: `1.5px solid ${active ? 'var(--accent)' : 'var(--border)'}`,
+                      background: active ? 'var(--accent-muted)' : 'var(--bg2)',
+                      color: active ? 'var(--accent)' : 'var(--t2)',
+                      fontWeight: active ? 600 : 400,
+                      transition: 'border-color .15s, background .15s',
+                    }}
+                  >
+                    <span>{tab.icon}</span>
+                    <span>{tab.label}</span>
+                    {tab.count != null && tab.count > 0 && (
+                      <span style={{
+                        fontSize: 9, fontWeight: 700, minWidth: 16, textAlign: 'center',
+                        padding: '1px 5px', borderRadius: 10,
+                        background: tab.danger ? 'var(--err)' : active ? 'var(--accent)' : 'var(--border)',
+                        color: tab.danger || active ? '#fff' : 'var(--t2)',
+                      }}>
+                        {tab.count}
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+
+            {activeTab === 'snapshots' ? (
+              !activeMonitor ? (
+                <Empty icon="📰" title={t('monitor.selectMonitor')} />
+              ) : snapshots.length === 0 ? (
+                <Empty icon="📰" title={t('monitor.noSnapshots')} desc={t('monitor.noSnapshotsHint')} />
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10, maxHeight: 560, overflowY: 'auto', padding: '4px 2px' }}>
+                  {snapshots.map((snap) => {
+                    const isHovered = hoveredSnapId === snap.id;
+                    const isUnread = snap.is_read === 0;
+                    return (
+                      <div
+                        key={snap.id}
+                        onMouseEnter={() => setHoveredSnapId(snap.id)}
+                        onMouseLeave={() => setHoveredSnapId(null)}
+                        style={{
+                          padding: '14px 16px',
+                          borderRadius: 12,
+                          border: isHovered
+                            ? '1px solid rgba(99, 102, 241, 0.4)'
+                            : isUnread
+                              ? '1px solid rgba(99, 102, 241, 0.15)'
+                              : '1px solid rgba(255, 255, 255, 0.06)',
+                          background: isUnread
+                            ? (isHovered ? 'rgba(99, 102, 241, 0.12)' : 'rgba(99, 102, 241, 0.06)')
+                            : (isHovered ? 'rgba(255, 255, 255, 0.04)' : 'rgba(255, 255, 255, 0.01)'),
+                          boxShadow: isHovered
+                            ? '0 8px 24px rgba(0, 0, 0, 0.3), 0 0 12px rgba(99, 102, 241, 0.1)'
+                            : '0 4px 12px rgba(0, 0, 0, 0.15)',
+                          backdropFilter: 'blur(10px)',
+                          transition: 'all 0.25s ease-in-out',
+                          transform: isHovered ? 'translateY(-2px)' : 'translateY(0)',
+                          opacity: snap.is_read ? 0.85 : 1,
+                        }}
+                      >
+                        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, marginBottom: 8 }}>
+                          {isUnread && (
+                            <span style={{ color: 'var(--accent)', fontSize: 10, marginTop: 5, flexShrink: 0 }}>●</span>
+                          )}
+
+                          {/* Video thumbnail */}
+                          {snap.thumbnail_url && (
+                            <div style={{ flexShrink: 0, position: 'relative' }}>
+                              <img
+                                src={snap.thumbnail_url}
+                                alt=""
+                                style={{
+                                  width: 100, height: 62, objectFit: 'cover',
+                                  borderRadius: 8, display: 'block',
+                                  border: '1px solid rgba(255,255,255,0.08)',
+                                }}
+                                onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                              />
+                              {activeMonitor && VIDEO_TYPES.includes(activeMonitor.source_type) && (
+                                <span style={{
+                                  position: 'absolute', bottom: 4, insetInlineEnd: 4,
+                                  background: 'rgba(0,0,0,0.75)', color: '#fff',
+                                  fontSize: 9, padding: '1px 4px', borderRadius: 4,
+                                  fontWeight: 'bold'
+                                }}>
+                                  {activeMonitor.source_type === 'youtube' ? '▶' : '🎵'}
+                                </span>
+                              )}
+                            </div>
+                          )}
+
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8, marginBottom: 4 }}>
+                              <div style={{ fontSize: 13, fontWeight: 600, lineHeight: 1.4, color: 'var(--fg)' }}>{snap.title}</div>
+                              {activeMonitor && (
+                                <div style={{ flexShrink: 0 }}>
+                                  {renderPlatformBadge(activeMonitor.source_type)}
+                                </div>
+                              )}
+                            </div>
+                            {snap.summary && (
+                              <div style={{ fontSize: 12, color: 'var(--t2)', marginTop: 4, lineHeight: 1.6 }}>
+                                {snap.summary.slice(0, 200)}{snap.summary.length > 200 ? '…' : ''}
+                              </div>
+                            )}
+                            {/* Website diff or visual diff */}
+                            {snap.diff_text && (
+                              (() => {
+                                let parsedDiff: { oldText: string; newText: string } | null = null;
+                                if (snap.diff_text && snap.diff_text.startsWith('{')) {
+                                  try { parsedDiff = JSON.parse(snap.diff_text); }
+                                  catch { parsedDiff = null; }
+                                }
+                                return (
+                                  <div style={{ marginTop: 6, display: 'flex', flexDirection: 'column', gap: 6 }}>
+                                    {parsedDiff ? (
+                                      <>
+                                        <Btn
+                                          variant="ghost"
+                                          style={{ fontSize: 10, padding: '2px 8px', alignSelf: 'flex-start', color: 'var(--accent)' }}
+                                          onClick={() => setExpandedDiffSnapId(expandedDiffSnapId === snap.id ? null : snap.id)}
+                                        >
+                                          {expandedDiffSnapId === snap.id ? '🔼 إخفاء المقارنة البصرية' : '🔎 مقارنة التعديلات البصرية'}
+                                        </Btn>
+                                        {expandedDiffSnapId === snap.id && (
+                                          <div style={{ marginTop: 6, border: '1px solid var(--border)', borderRadius: 8, padding: 8, background: '#000' }}>
+                                            <VisualDiff oldText={parsedDiff.oldText} newText={parsedDiff.newText} />
+                                          </div>
+                                        )}
+                                      </>
+                                    ) : (
+                                      <div style={{
+                                        padding: '6px 8px', borderRadius: 6,
+                                        background: 'var(--bg3)', fontSize: 11,
+                                        fontFamily: 'monospace', color: 'var(--t2)', whiteSpace: 'pre-wrap',
+                                      }}>
+                                        {snap.diff_text}
+                                      </div>
+                                    )}
+                                  </div>
+                                );
+                              })()
+                            )}
+                          </div>
+                        </div>
+                        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 6, alignItems: 'center', borderTop: '1px solid rgba(255,255,255,0.04)', paddingTop: 8 }}>
+                          {snap.link && (
+                            <a href={snap.link} target="_blank" rel="noreferrer" style={{ fontSize: 11, color: 'var(--accent)', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 2 }}>
+                              🔗 {t('common.open')}
+                            </a>
+                          )}
+                          {isUnread && (
+                            <Btn variant="ghost" style={{ fontSize: 11, padding: '2px 8px' }} onClick={() => void markRead(snap.id)}>
+                              ✓ {t('monitor.markRead')}
+                            </Btn>
+                          )}
+                          <Btn
+                            variant="ghost"
+                            disabled={rewriting === snap.id}
+                            style={{ fontSize: 11, padding: '2px 8px' }}
+                            onClick={() => void rewrite(snap.id)}
+                          >
+                            {rewriting === snap.id ? '⏳' : `✨ ${t('monitor.rewriteBtn')}`}
+                          </Btn>
+                          {/* Download button for video types */}
+                          {activeMonitor && VIDEO_TYPES.includes(activeMonitor.source_type) && snap.link && (
+                            <Btn
+                              variant="ghost"
+                              style={{ fontSize: 11, padding: '2px 8px', color: 'var(--ok)' }}
+                              onClick={() => void downloadSnap(snap)}
+                              title={ytdlpReady ? t('monitor.ytdlpTooltip') : t('monitor.ytdlpTooltipRequired')}
+                            >
+                              ⬇ {dlQuality === 'audio_only' ? t('monitor.qualityAudio') : t('socialVideo.downloadBtn')}
+                            </Btn>
+                          )}
+                          {snap.rewritten_article_id && (
+                            <Badge tone="ok" style={{ fontSize: 10 }}>✅ {t('monitor.rewritten')}</Badge>
+                          )}
+                          <span style={{ fontSize: 10, color: 'var(--t3)', marginInlineStart: 'auto' }}>
+                            {snap.published_at ? new Date(snap.published_at).toLocaleDateString(locale) : snap.seen_at ? new Date(snap.seen_at).toLocaleDateString(locale) : ''}
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )
+            ) : activeTab === 'clusters' ? (
+              clusters.length === 0 ? (
+                <Empty icon="🕸️" title="لا توجد تجمعات دلالية حالياً" desc="سيقوم البرنامج بتجميع أخبار المنافسين دلالياً تلقائياً متى توفرت لقطات أخبار غير مقروءة ومتشابهة." />
+              ) : (
+                <SemanticForceGraph
+                  clusters={clusters}
+                  onSynthesize={handleSynthesize}
+                  synthesizing={synthesizing}
+                />
+              )
             ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 10, maxHeight: 560, overflowY: 'auto', padding: '4px 2px' }}>
-                {snapshots.map((snap) => {
-                  const isHovered = hoveredSnapId === snap.id;
-                  const isUnread = snap.is_read === 0;
-                  return (
+              // activeTab === 'alerts'
+              alerts.length === 0 ? (
+                <Empty icon="🚨" title="لا توجد تنبيهات نشاط عاجلة" desc="يقوم المساعد بمراقبة نشاط المنافسين على مدار الساعة وسيتم تنبيهك فوراً عند رصد نشر متزامن كثيف لموضوع معين." />
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 12, maxHeight: 560, overflowY: 'auto', padding: '4px 2px' }}>
+                  {alerts.map((alert) => (
                     <div
-                      key={snap.id}
-                      onMouseEnter={() => setHoveredSnapId(snap.id)}
-                      onMouseLeave={() => setHoveredSnapId(null)}
+                      key={alert.id}
                       style={{
                         padding: '14px 16px',
                         borderRadius: 12,
-                        border: isHovered
-                          ? '1px solid rgba(99, 102, 241, 0.4)'
-                          : isUnread
-                            ? '1px solid rgba(99, 102, 241, 0.15)'
-                            : '1px solid rgba(255, 255, 255, 0.06)',
-                        background: isUnread
-                          ? (isHovered ? 'rgba(99, 102, 241, 0.12)' : 'rgba(99, 102, 241, 0.06)')
-                          : (isHovered ? 'rgba(255, 255, 255, 0.04)' : 'rgba(255, 255, 255, 0.01)'),
-                        boxShadow: isHovered
-                          ? '0 8px 24px rgba(0, 0, 0, 0.3), 0 0 12px rgba(99, 102, 241, 0.1)'
-                          : '0 4px 12px rgba(0, 0, 0, 0.15)',
-                        backdropFilter: 'blur(10px)',
-                        transition: 'all 0.25s ease-in-out',
-                        transform: isHovered ? 'translateY(-2px)' : 'translateY(0)',
-                        opacity: snap.is_read ? 0.85 : 1,
+                        border: alert.severity === 'high' ? '1px solid rgba(239, 68, 68, 0.4)' : '1px solid rgba(245, 158, 11, 0.3)',
+                        background: alert.severity === 'high' ? 'rgba(239, 68, 68, 0.05)' : 'rgba(245, 158, 11, 0.03)',
+                        boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
+                        transition: 'all 0.2s ease-in-out',
                       }}
                     >
-                      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, marginBottom: 8 }}>
-                        {isUnread && (
-                          <span style={{ color: 'var(--accent)', fontSize: 10, marginTop: 5, flexShrink: 0 }}>●</span>
-                        )}
-
-                        {/* Video thumbnail */}
-                        {snap.thumbnail_url && (
-                          <div style={{ flexShrink: 0, position: 'relative' }}>
-                            <img
-                              src={snap.thumbnail_url}
-                              alt=""
-                              style={{
-                                width: 100, height: 62, objectFit: 'cover',
-                                borderRadius: 8, display: 'block',
-                                border: '1px solid rgba(255,255,255,0.08)',
-                              }}
-                              onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
-                            />
-                            {activeMonitor && VIDEO_TYPES.includes(activeMonitor.source_type) && (
-                              <span style={{
-                                position: 'absolute', bottom: 4, insetInlineEnd: 4,
-                                background: 'rgba(0,0,0,0.75)', color: '#fff',
-                                fontSize: 9, padding: '1px 4px', borderRadius: 4,
-                                fontWeight: 'bold'
-                              }}>
-                                {activeMonitor.source_type === 'youtube' ? '▶' : '🎵'}
-                              </span>
-                            )}
-                          </div>
-                        )}
-
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8, marginBottom: 4 }}>
-                            <div style={{ fontSize: 13, fontWeight: 600, lineHeight: 1.4, color: 'var(--fg)' }}>{snap.title}</div>
-                            {activeMonitor && (
-                              <div style={{ flexShrink: 0 }}>
-                                {renderPlatformBadge(activeMonitor.source_type)}
-                              </div>
-                            )}
-                          </div>
-                          {snap.summary && (
-                            <div style={{ fontSize: 12, color: 'var(--t2)', marginTop: 4, lineHeight: 1.6 }}>
-                              {snap.summary.slice(0, 200)}{snap.summary.length > 200 ? '…' : ''}
-                            </div>
-                          )}
-                          {/* Website diff */}
-                          {snap.diff_text && (
-                            <div style={{
-                              marginTop: 6, padding: '6px 8px', borderRadius: 6,
-                              background: 'var(--bg3)', fontSize: 11,
-                              fontFamily: 'monospace', color: 'var(--t2)', whiteSpace: 'pre-wrap',
-                            }}>
-                              {snap.diff_text}
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 6, alignItems: 'center', borderTop: '1px solid rgba(255,255,255,0.04)', paddingTop: 8 }}>
-                        {snap.link && (
-                          <a href={snap.link} target="_blank" rel="noreferrer" style={{ fontSize: 11, color: 'var(--accent)', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 2 }}>
-                            🔗 {t('common.open')}
-                          </a>
-                        )}
-                        {isUnread && (
-                          <Btn variant="ghost" style={{ fontSize: 11, padding: '2px 8px' }} onClick={() => void markRead(snap.id)}>
-                            ✓ {t('monitor.markRead')}
-                          </Btn>
-                        )}
-                        <Btn
-                          variant="ghost"
-                          disabled={rewriting === snap.id}
-                          style={{ fontSize: 11, padding: '2px 8px' }}
-                          onClick={() => void rewrite(snap.id)}
-                        >
-                          {rewriting === snap.id ? '⏳' : `✨ ${t('monitor.rewriteBtn')}`}
-                        </Btn>
-                        {/* Download button for video types */}
-                        {activeMonitor && VIDEO_TYPES.includes(activeMonitor.source_type) && snap.link && (
-                          <Btn
-                            variant="ghost"
-                            style={{ fontSize: 11, padding: '2px 8px', color: 'var(--ok)' }}
-                            onClick={() => void downloadSnap(snap)}
-                            title={ytdlpReady ? t('monitor.ytdlpTooltip') : t('monitor.ytdlpTooltipRequired')}
-                          >
-                            ⬇ {dlQuality === 'audio_only' ? t('monitor.qualityAudio') : t('socialVideo.downloadBtn')}
-                          </Btn>
-                        )}
-                        {snap.rewritten_article_id && (
-                          <Badge tone="ok" style={{ fontSize: 10 }}>✅ {t('monitor.rewritten')}</Badge>
-                        )}
-                        <span style={{ fontSize: 10, color: 'var(--t3)', marginInlineStart: 'auto' }}>
-                          {snap.published_at ? new Date(snap.published_at).toLocaleDateString(locale) : snap.seen_at ? new Date(snap.seen_at).toLocaleDateString(locale) : ''}
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                        <span style={{
+                          fontSize: 10, fontWeight: 'bold', padding: '2px 8px', borderRadius: 4,
+                          background: alert.severity === 'high' ? 'rgba(239,68,68,0.15)' : 'rgba(245,158,11,0.15)',
+                          color: alert.severity === 'high' ? '#ef4444' : '#f59e0b',
+                        }}>
+                          {alert.severity === 'high' ? '🚨 تنبيه نشاط مكثف' : '⚠️ رصد متزامن متوسط'}
                         </span>
                       </div>
+                      
+                      <div style={{ fontSize: 13, fontWeight: 'bold', color: 'var(--fg)', marginBottom: 6 }}>
+                        {alert.topicTitle}
+                      </div>
+
+                      <div style={{ fontSize: 12, color: 'var(--t2)', marginBottom: 10, lineHeight: 1.5 }}>
+                        {alert.summary}
+                      </div>
+
+                      <div style={{ fontSize: 11, color: 'var(--t2)', marginBottom: 12 }}>
+                        <strong>المنافسون المشاركون:</strong>
+                        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 4 }}>
+                          {alert.snapshots.map(s => (
+                            <span key={s.id} style={{ padding: '2px 6px', borderRadius: 4, background: 'var(--bg3)', border: '1px solid var(--border)' }}>
+                              {s.monitorName}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+
+                      <Btn
+                        variant="primary"
+                        disabled={synthesizing}
+                        onClick={() => void handleSynthesize(alert.snapshotIds)}
+                        style={{ fontSize: 11, padding: '4px 12px' }}
+                      >
+                        {synthesizing ? '⏳ جاري الدمج...' : '✨ دمج التغطية وصياغة تقرير مدمج'}
+                      </Btn>
                     </div>
-                  );
-                })}
-              </div>
+                  ))}
+                </div>
+              )
             )}
           </Card>
         </div>

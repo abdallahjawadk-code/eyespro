@@ -421,6 +421,9 @@ const api: EyesProApi = {
     markRead: (snapshotId: number) => invoke('monitor:markRead', snapshotId),
     rewrite: (snapshotId: number) => invoke('monitor:rewrite', snapshotId),
     unreadCount: () => invoke('monitor:unreadCount'),
+    getSemanticClusters: (limit?: number) => invoke('monitor:getSemanticClusters', limit),
+    synthesizeNews: (snapshotIds: number[]) => invoke('monitor:synthesizeNews', snapshotIds),
+    getTopicAlerts: () => invoke('monitor:getTopicAlerts'),
   },
   instagram: {
     login:      () => invoke('instagram:login'),

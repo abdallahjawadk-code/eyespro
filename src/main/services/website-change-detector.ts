@@ -11,10 +11,12 @@
  * Optionally watches a specific CSS selector instead of the full page.
  */
 import crypto from 'node:crypto';
+import * as cheerio from 'cheerio';
 import { getDb } from '../db/database';
-import { getText } from '../net/http';
+
 import { fetchPageHtml } from './fetch-pipeline';
 import { createLogger } from '../logger';
+import { runAiChain, resolveEffectiveAiProvider } from './ai';
 
 const log = createLogger('website-change-detector');
 
@@ -57,44 +59,130 @@ function extractSelectorText(html: string, selector: string): string {
   return m ? stripHtml(m[1]) : stripHtml(html);
 }
 
+export function extractMainArticleContent(html: string): string {
+  try {
+    const $ = cheerio.load(html);
+    
+    // 1. Remove obvious boilerplate/non-content tags
+    $('script, style, noscript, iframe, link, svg, video, audio, object, embed').remove();
+    $('header, footer, nav, aside, [role="banner"], [role="navigation"], [role="contentinfo"]').remove();
+    
+    // Remove common sidebar, menu, ad and footer classes/ids
+    $('.sidebar, #sidebar, .menu, #menu, .nav, #nav, .footer, #footer, .header, #header, .ads, .ad, #ads, .comments, #comments, .related, .share-buttons').remove();
+
+    let bestContainer: any = null;
+    let maxScore = 0;
+
+    // 2. Look for standard article container tags first
+    const standardSelectors = [
+      'article', 'main', '[role="main"]', '#content', '#main',
+      '.post', '.article', '.entry-content', '.post-content', '.story-body', '.article-body', '.post-body'
+    ];
+
+    for (const selector of standardSelectors) {
+      const el = $(selector);
+      if (el.length > 0) {
+        el.each((_, item) => {
+          const textLength = $(item).text().trim().length;
+          // Simple scoring: text length + weighting standard containers
+          const score = textLength * 1.5;
+          if (score > maxScore) {
+            maxScore = score;
+            bestContainer = $(item);
+          }
+        });
+      }
+    }
+
+    // 3. If standard elements don't give a clear winner, use density scoring on divs
+    if (maxScore < 200) {
+      $('div, section').each((_, item) => {
+        const div = $(item);
+        
+        // Count paragraphs in this specific container
+        const pCount = div.find('p').length;
+        const text = div.clone().find('div, section').remove().end().text().trim();
+        const textLength = text.length;
+
+        // Density score formula
+        const score = textLength + (pCount * 50);
+        if (score > maxScore) {
+          maxScore = score;
+          bestContainer = div;
+        }
+      });
+    }
+
+    if (bestContainer && maxScore > 100) {
+      // Extract clean text from the best container
+      // Map paragraphs/headers to maintain some structural spacing
+      const blocks: string[] = [];
+      bestContainer.find('p, h1, h2, h3, h4, li').each((_: any, el: any) => {
+        const txt = $(el).text().trim();
+        if (txt) blocks.push(txt);
+      });
+
+      if (blocks.length > 0) {
+        return blocks.join('\n\n');
+      }
+      return bestContainer.text().trim().replace(/\s+/g, ' ');
+    }
+  } catch (e) {
+    log.warn(`Zero-Config extraction error: ${(e as Error).message}`);
+  }
+
+  // Fallback to stripHtml of raw body
+  return stripHtml(html);
+}
+
 function hashText(text: string): string {
   return crypto.createHash('sha256').update(text, 'utf8').digest('hex');
 }
 
 // ─── Diff generation ──────────────────────────────────────────────────────────
 
-function generateDiff(oldText: string, newText: string): string {
-  const oldLines = oldText.split(/[.!?]\s+/).filter(Boolean);
-  const newLines = newText.split(/[.!?]\s+/).filter(Boolean);
-  const oldSet = new Set(oldLines);
-  const newSet = new Set(newLines);
-
-  const added = newLines.filter((l) => !oldSet.has(l)).slice(0, 10);
-  const removed = oldLines.filter((l) => !newSet.has(l)).slice(0, 10);
-
-  const parts: string[] = [];
-  if (added.length) parts.push('➕ مضاف:\n' + added.map((l) => `  + ${l.slice(0, 200)}`).join('\n'));
-  if (removed.length) parts.push('➖ محذوف:\n' + removed.map((l) => `  - ${l.slice(0, 200)}`).join('\n'));
-  return parts.join('\n\n') || 'تغيير في التنسيق أو الترتيب';
-}
 
 // ─── Fetch helpers ────────────────────────────────────────────────────────────
+
+async function extractMainArticleContentViaAi(html: string): Promise<string | null> {
+  const provider = resolveEffectiveAiProvider();
+  if (provider === 'unconfigured' || provider === 'off') {
+    return null;
+  }
+  try {
+    const $ = cheerio.load(html);
+    $('script, style, noscript, iframe, link, svg, video, audio, object, embed').remove();
+    const bodyHtml = $('body').html() || html;
+    const truncated = bodyHtml.slice(0, 10000);
+    const prompt = 'أنت خبير في تحليل صفحات الويب واستخلاص الأخبار. اقرأ كود HTML التالي واستخلص نص الخبر أو المقال الإخباري الرئيسي فقط بدقة وبشكل كامل ونظيف. تجنب استخلاص أي روابط خارجية، إعلانات، لوائح تنقل، أو نصوص حقوق نشر. أعد نص الخبر فقط:';
+    log.info('Triggering AI Semantic Extractor Fallback...');
+    const result = await runAiChain(prompt, truncated);
+    return result.trim() || null;
+  } catch (e) {
+    log.warn(`AI Semantic Extractor failed: ${(e as Error).message}`);
+    return null;
+  }
+}
 
 async function fetchPageText(config: WebsiteWatchConfig): Promise<string | null> {
   const { url, selector, forceBrowser } = config;
   try {
-    if (forceBrowser) {
-      const result = await fetchPageHtml(url, { forceBrowser: true, selector });
-      if (!result.ok || !result.html) return null;
-      return selector ? extractSelectorText(result.html, selector) : stripHtml(result.html);
+    const result = await fetchPageHtml(url, { forceBrowser: !!forceBrowser, selector, timeout: 20000 });
+    if (!result.ok || !result.html) return null;
+    const html = result.html;
+
+    let text = selector ? extractSelectorText(html, selector) : extractMainArticleContent(html);
+
+    // AI Fallback if heuristic returns empty/incomplete content from a non-empty page
+    if (!selector && (!text || text.length < 150) && html.length > 1000) {
+      const aiText = await extractMainArticleContentViaAi(html);
+      if (aiText && aiText.length > 150) {
+        log.info('AI Semantic Extractor successfully retrieved article content.');
+        text = aiText;
+      }
     }
 
-    const res = await getText(url, {
-      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/124 Safari/537.36',
-    }, { timeout: 20_000, useProxy: true });
-    if (!res.ok) return null;
-
-    return selector ? extractSelectorText(res.body, selector) : stripHtml(res.body);
+    return text;
   } catch (e) {
     log.warn(`Fetch failed for ${url}: ${(e as Error).message}`);
     return null;
@@ -117,6 +205,28 @@ function storeHash(monitorId: number, hash: string): void {
   ).run(hash, monitorId);
 }
 
+function getStoredBaselineText(monitorId: number): string | null {
+  try {
+    const db = getDb();
+    const row = db.prepare(
+      `SELECT last_content_text FROM competitor_monitors WHERE id = ?`
+    ).get(monitorId) as { last_content_text: string | null } | undefined;
+    return row?.last_content_text ?? null;
+  } catch {
+    return null;
+  }
+}
+
+function storeBaselineText(monitorId: number, text: string): void {
+  try {
+    getDb().prepare(
+      `UPDATE competitor_monitors SET last_content_text = ? WHERE id = ?`
+    ).run(text, monitorId);
+  } catch (err) {
+    log.warn(`Failed to store baseline text: ${(err as Error).message}`);
+  }
+}
+
 // ─── Public API ───────────────────────────────────────────────────────────────
 
 export async function checkWebsiteChange(
@@ -134,12 +244,12 @@ export async function checkWebsiteChange(
 
   let diff = '';
   if (changed) {
-    // We don't store the previous text — compute a structural diff from hash change message
     diff = `تم اكتشاف تغيير في الصفحة (hash: ${previousHash?.slice(0, 8)} → ${hash.slice(0, 8)})`;
     log.info(`Website change detected for monitor ${monitorId}: ${config.url}`);
   }
 
   storeHash(monitorId, hash);
+  storeBaselineText(monitorId, currentText);
 
   return {
     changed,
@@ -157,6 +267,7 @@ export async function initWebsiteBaseline(monitorId: number, config: WebsiteWatc
   if (!text) return { ok: false, hash: '' };
   const hash = hashText(text);
   storeHash(monitorId, hash);
+  storeBaselineText(monitorId, text);
   log.info(`Website baseline set for monitor ${monitorId}: ${hash.slice(0, 8)}`);
   return { ok: true, hash };
 }
@@ -166,30 +277,24 @@ export async function checkWebsiteChangeWithDiff(
   monitorId: number,
   config: WebsiteWatchConfig
 ): Promise<ChangeCheckResult & { previousText?: string }> {
-  const db = getDb();
-
   const currentText = await fetchPageText(config);
   if (!currentText) throw new Error(`فشل جلب الصفحة: ${config.url}`);
 
   const hash = hashText(currentText);
   const previousHash = getStoredHash(monitorId);
-
-  // Retrieve previous text from last snapshot
-  const lastSnap = db.prepare(
-    `SELECT diff_text FROM competitor_snapshots WHERE monitor_id = ? ORDER BY seen_at DESC LIMIT 1`
-  ).get(monitorId) as { diff_text: string | null } | undefined;
-  const previousText = lastSnap?.diff_text ?? null;
+  const previousText = getStoredBaselineText(monitorId);
 
   const changed = previousHash !== null && hash !== previousHash;
   let diff = '';
 
   if (changed && previousText) {
-    diff = generateDiff(previousText, currentText);
+    diff = JSON.stringify({ oldText: previousText, newText: currentText });
   } else if (changed) {
-    diff = `تم اكتشاف تغيير (hash: ${previousHash?.slice(0, 8)} → ${hash.slice(0, 8)})`;
+    diff = JSON.stringify({ oldText: '', newText: currentText });
   }
 
   storeHash(monitorId, hash);
+  storeBaselineText(monitorId, currentText);
 
   return {
     changed,
@@ -198,6 +303,5 @@ export async function checkWebsiteChangeWithDiff(
     diff,
     snippet: currentText.slice(0, 500),
     checkedAt: new Date().toISOString(),
-    previousText: currentText, // return current to be stored as next "previous"
   };
 }

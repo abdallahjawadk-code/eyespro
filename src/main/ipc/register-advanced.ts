@@ -572,6 +572,24 @@ export function registerAdvancedHandlers(ipcMain: IpcMain, getWin: () => Browser
     try { return ok(getUnreadCount()); }
     catch (e) { return { ok: false, error: (e as Error).message }; }
   });
+  ipcMain.handle('monitor:getSemanticClusters', async (_e, limit?: number) => {
+    try {
+      const { groupSnapshotsIntoSemanticClusters } = await import('../services/competitor-monitor');
+      return ok(await groupSnapshotsIntoSemanticClusters(limit ? sanitizeInt(limit, 1, 500) : 100));
+    } catch (e) { return { ok: false, error: (e as Error).message }; }
+  });
+  ipcMain.handle('monitor:synthesizeNews', async (_e, snapshotIds: number[]) => {
+    try {
+      const { synthesizeArticleFromSnapshots } = await import('../services/competitor-monitor');
+      return ok(await synthesizeArticleFromSnapshots(snapshotIds.map(Number)));
+    } catch (e) { return { ok: false, error: (e as Error).message }; }
+  });
+  ipcMain.handle('monitor:getTopicAlerts', async () => {
+    try {
+      const { getTopicAlerts } = await import('../services/competitor-monitor');
+      return ok(await getTopicAlerts());
+    } catch (e) { return { ok: false, error: (e as Error).message }; }
+  });
 
   // ── Media Downloader (yt-dlp) ─────────────────────────────────────────────
   ipcMain.handle('downloader:status', async () => {

@@ -1308,4 +1308,9 @@ export function runMigrations(db: Database.Database): void {
       );
     `);
   });
+
+  // v54 — Website change visual side-by-side diff text column
+  migrateTo(db, 54, () => {
+    ensureCol(db, 'competitor_monitors', 'last_content_text', 'TEXT');
+  });
 }

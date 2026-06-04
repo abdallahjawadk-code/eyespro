@@ -7,15 +7,17 @@
  */
 
 import { getDb } from '../db/database';
-import { getText } from '../net/http';
+import { fetchPageHtml } from './fetch-pipeline';
 import { createArticle } from './articles';
 import { runAiChain } from './ai';
+import { hammingDistance, articleSimhash } from './dedup';
 import { scrapeFacebookPage } from './facebook-scraper';
 import { scrapeYoutubeChannel, youtubeVideoToPost } from './scrapers/youtube-scraper';
 import { scrapeGoogleNews } from './scrapers/google-news-scraper';
 import { scrapeTwitterProfile } from './scrapers/twitter-scraper';
 import { checkWebsiteChangeWithDiff } from './website-change-detector';
-import { withRetry } from '../net/stealth-utils';
+import { transcribeUrl } from './transcribe';
+
 import { createLogger } from '../logger';
 
 const log = createLogger('competitor-monitor');
@@ -59,6 +61,42 @@ export interface CompetitorSnapshot {
   seen_at: string;
   is_read: number;
   rewritten_article_id: number | null;
+}
+
+export function isPotentialDuplicate(title: string): boolean {
+  try {
+    const db = getDb();
+    const words = title
+      .replace(/[^\p{L}\p{N}\s]/gu, ' ')
+      .split(/\s+/)
+      .map(w => w.trim())
+      .filter(w => w.length > 2);
+
+    if (words.length === 0) return false;
+
+    const query = words.map(w => `"${w.replace(/"/g, '""')}"`).join(' OR ');
+    const match = db.prepare(`
+      SELECT rowid, bm25(articles_fts) as score 
+      FROM articles_fts 
+      WHERE articles_fts MATCH ? 
+      ORDER BY score 
+      LIMIT 1
+    `).get(query) as { rowid: number; score: number } | undefined;
+
+    if (match && match.score < -1.5) {
+      log.info(`FTS duplicate detected for title "${title}". Match score: ${match.score}`);
+      return true;
+    }
+  } catch (e) {
+    log.warn(`FTS duplicate check failed: ${(e as Error).message}`);
+  }
+  return false;
+}
+
+function getFinalTitle(title: string): string {
+  if (!title) return title;
+  const cleanTitle = title.replace(/^\[مكرر\]\s*/, '').trim();
+  return isPotentialDuplicate(cleanTitle) ? `[مكرر] ${cleanTitle}` : cleanTitle;
 }
 
 // ─── RSS parsing ──────────────────────────────────────────────────────────────
@@ -145,13 +183,9 @@ async function checkRssMonitor(monitor: CompetitorMonitor): Promise<{ found: num
 
   let xml: string;
   try {
-    const res = await withRetry(
-      () => getText(monitor.feed_url, {}, { useProxy: true }),
-      { maxAttempts: 3, baseDelayMs: 2000,
-        onRetry: (n, e) => log.warn(`RSS retry ${n} for monitor ${monitor.id}: ${e.message}`) }
-    );
-    if (!res.ok) throw new Error(res.body.slice(0, 100));
-    xml = res.body;
+    const res = await fetchPageHtml(monitor.feed_url, { timeout: 20000 });
+    if (!res.ok || !res.html) throw new Error(res.error || 'فشل جلب تغذية RSS');
+    xml = res.html;
   } catch (e) {
     log.warn(`RSS fetch failed for monitor ${monitor.id}: ${(e as Error).message}`);
     throw e;
@@ -173,7 +207,7 @@ async function checkRssMonitor(monitor: CompetitorMonitor): Promise<{ found: num
     for (const item of items) {
       if (lastGuid && item.guid === lastGuid) break;
       const summary = item.description.replace(/<[^>]+>/g, '').slice(0, 1000).trim();
-      insert.run(monitor.id, item.title, item.link || null, summary || null, item.pubDate || null);
+      insert.run(monitor.id, getFinalTitle(item.title), item.link || null, summary || null, item.pubDate || null);
       found++;
     }
   });
@@ -216,7 +250,7 @@ async function checkFacebookMonitor(monitor: CompetitorMonitor): Promise<{ found
       ).get(monitor.id, post.link ?? '', summary.slice(0, 100));
       if (existing) continue;
 
-      insert.run(monitor.id, title, post.link ?? null, summary, post.timestamp ?? null);
+      insert.run(monitor.id, getFinalTitle(title), post.link ?? null, summary, post.timestamp ?? null);
       found++;
       void guid; // suppress unused warning
     }
@@ -255,7 +289,7 @@ async function checkYoutubeMonitor(monitor: CompetitorMonitor): Promise<{ found:
         `SELECT id FROM competitor_snapshots WHERE monitor_id = ? AND link = ?`
       ).get(monitor.id, post.link);
       if (existing) continue;
-      insert.run(monitor.id, post.title, post.link, post.summary, post.publishedAt || null, v.thumbnail || null);
+      insert.run(monitor.id, getFinalTitle(post.title), post.link, post.summary, post.publishedAt || null, v.thumbnail || null);
       found++;
     }
   });
@@ -295,7 +329,7 @@ async function checkGoogleNewsMonitor(monitor: CompetitorMonitor): Promise<{ fou
       ).get(monitor.id, a.link);
       if (existing) continue;
       const summary = a.summary || `${a.source}: ${a.title}`;
-      insert.run(monitor.id, a.title, a.link || null, summary, a.publishedAt || null);
+      insert.run(monitor.id, getFinalTitle(a.title), a.link || null, summary, a.publishedAt || null);
       found++;
     }
   });
@@ -331,7 +365,7 @@ async function checkTwitterMonitor(monitor: CompetitorMonitor): Promise<{ found:
         `SELECT id FROM competitor_snapshots WHERE monitor_id = ? AND (link = ? OR summary = ?)`
       ).get(monitor.id, t.link ?? '', key);
       if (existing) continue;
-      insert.run(monitor.id, title, t.link ?? null, t.text.slice(0, 1000), t.publishedAt ?? null);
+      insert.run(monitor.id, getFinalTitle(title), t.link ?? null, t.text.slice(0, 1000), t.publishedAt ?? null);
       found++;
     }
   });
@@ -484,3 +518,265 @@ export async function rewriteSnapshot(snapshotId: number): Promise<{ articleId: 
 
   return { articleId };
 }
+
+export interface SnapshotCluster {
+  clusterId: number;
+  main: CompetitorSnapshot;
+  duplicates: CompetitorSnapshot[];
+  diffSummary: string;
+}
+
+export async function groupSnapshotsIntoSemanticClusters(limit = 100): Promise<SnapshotCluster[]> {
+  const db = getDb();
+  // Fetch unread competitor snapshots
+  const snapshots = db.prepare(
+    `SELECT * FROM competitor_snapshots WHERE is_read = 0 ORDER BY seen_at DESC LIMIT ?`
+  ).all(limit) as CompetitorSnapshot[];
+
+  if (snapshots.length === 0) return [];
+
+  // Compute SimHash for each snapshot title + summary
+  const hashedSnapshots = snapshots.map(s => ({
+    snapshot: s,
+    hash: articleSimhash(s.title, s.summary ?? '')
+  }));
+
+  const clusters: { main: CompetitorSnapshot; duplicates: CompetitorSnapshot[] }[] = [];
+  const processed = new Set<number>();
+
+  for (let i = 0; i < hashedSnapshots.length; i++) {
+    const itemA = hashedSnapshots[i]!;
+    if (processed.has(itemA.snapshot.id)) continue;
+    processed.add(itemA.snapshot.id);
+
+    const currentCluster = {
+      main: itemA.snapshot,
+      duplicates: [] as CompetitorSnapshot[]
+    };
+
+    // Find duplicates matching SimHash Hamming distance <= 6
+    for (let j = i + 1; j < hashedSnapshots.length; j++) {
+      const itemB = hashedSnapshots[j]!;
+      if (processed.has(itemB.snapshot.id)) continue;
+
+      if (itemA.hash && itemB.hash) {
+        const dist = hammingDistance(itemA.hash, itemB.hash);
+        if (dist <= 6) {
+          processed.add(itemB.snapshot.id);
+          currentCluster.duplicates.push(itemB.snapshot);
+        }
+      }
+    }
+
+    clusters.push(currentCluster);
+  }
+
+  // Build an instant, deterministic comparison summary for each cluster.
+  //
+  // IMPORTANT: this function runs on every Monitor page load (loadAll), so it must
+  // NOT call the AI provider — doing one AI request per cluster here blocked the
+  // whole screen (and hammered the provider) whenever competitors had overlapping
+  // coverage. The expensive AI synthesis lives in synthesizeArticleFromSnapshots,
+  // which the user triggers explicitly via the "دمج" button.
+  const finalClusters: SnapshotCluster[] = clusters.map((c, idx) => ({
+    clusterId: idx + 1,
+    main: c.main,
+    duplicates: c.duplicates,
+    diffSummary: buildDeterministicDiffSummary(c.main, c.duplicates),
+  }));
+
+  return finalClusters;
+}
+
+/** Fast, AI-free comparison line shown in the cluster detail panel. */
+function buildDeterministicDiffSummary(main: CompetitorSnapshot, duplicates: CompetitorSnapshot[]): string {
+  if (duplicates.length === 0) {
+    return 'خبر فردي لا توجد تغطية موازية له من منافسين آخرين حتى الآن.';
+  }
+  const all = [main, ...duplicates];
+  const count = all.length;
+
+  // Earliest publisher = fastest to break the story.
+  const withTime = all
+    .map((s) => ({ s, t: new Date(s.published_at || s.seen_at).getTime() }))
+    .filter((x) => Number.isFinite(x.t))
+    .sort((a, b) => a.t - b.t);
+  const fastest = withTime[0]?.s ?? main;
+  const fastestTitle = fastest.title.length > 60 ? fastest.title.slice(0, 58) + '…' : fastest.title;
+
+  return `رُصدت تغطية متوازية من ${count} مصادر لنفس الحدث. الأسبق نشراً: «${fastestTitle}». اضغط «دمج» لتوليد تقرير موحّد بالذكاء الاصطناعي يقارن الزوايا ويدمج الحقائق.`;
+}
+
+export async function synthesizeArticleFromSnapshots(snapshotIds: number[]): Promise<number> {
+  const db = getDb();
+  if (snapshotIds.length === 0) throw new Error('لم يتم تحديد أي معرّفات لدمج الأخبار');
+
+  // Fetch unread snapshots matching snapshotIds
+  const placeholders = snapshotIds.map(() => '?').join(',');
+  const snapshots = db.prepare(
+    `SELECT * FROM competitor_snapshots WHERE id IN (${placeholders})`
+  ).all(...snapshotIds) as CompetitorSnapshot[];
+
+  if (snapshots.length === 0) throw new Error('لم يتم العثور على أي لقطات إخبارية مطابقة للدمج');
+
+  // Compile snapshots into context, with on-demand video transcription (Cross-Media Synthesis)
+  const compiledBlocks: string[] = [];
+  for (let i = 0; i < snapshots.length; i++) {
+    const s = snapshots[i];
+    let bodyText = s.summary || '';
+
+    // If snapshot is YouTube/video, attempt transcription
+    if (s.link && (s.link.includes('youtube.com') || s.link.includes('youtu.be') || s.link.endsWith('.mp4'))) {
+      log.info(`Cross-Media Synthesis: Transcribing video link for snapshot ${s.id}...`);
+      try {
+        const transResult = await transcribeUrl(s.link);
+        if (transResult.ok && transResult.text) {
+          log.info(`Cross-Media Synthesis: Successfully transcribed video for snapshot ${s.id}`);
+          bodyText = `[تفريغ فيديو مرئي] ${transResult.text}\n\n[الوصف]: ${bodyText}`;
+        }
+      } catch (err) {
+        log.warn(`Cross-Media Synthesis: Transcription failed for snapshot ${s.id}: ${(err as Error).message}`);
+      }
+    }
+
+    compiledBlocks.push(`المصدر ${i + 1} (${s.link || 'منصة'}):\nالعنوان: ${s.title}\nالمحتوى: ${bodyText}`);
+  }
+
+  const consolidatedText = compiledBlocks.join('\n\n');
+
+  const prompt = `أنت رئيس تحرير صحفي محترف. لديك البيانات والتغطيات المتعددة التالية لحدث واحد. قم بدمج الحقائق وصياغة تقرير إخباري عربي واحد متكامل ومحايد ومفصل دون تكرار أو حذف معلومات جوهرية. أعد النتيجة بتنسيق JSON فقط مطابق للهيكل التالي تمامًا دون أي نصوص إضافية أو علامات ماركداون:\n{\n  "title": "عنوان التقرير المقترح للموضوع المدمج",\n  "summary": "ملخص التقرير المدمج في جملتين",\n  "content": "محتوى التقرير الصحفي المدمج بالكامل بشكل مفصل واحترافي ورصين"\n}`;
+
+  const aiResult = await runAiChain(prompt, consolidatedText);
+  let parsed: { title: string; summary: string; content: string };
+  try {
+    const cleaned = aiResult.replace(/```json|```/g, '').trim();
+    parsed = JSON.parse(cleaned);
+  } catch {
+    // Regex fallback
+    const titleMatch = aiResult.match(/"title"\s*:\s*"([^"]+)"/);
+    const summaryMatch = aiResult.match(/"summary"\s*:\s*"([^"]+)"/);
+    const contentMatch = aiResult.match(/"content"\s*:\s*"([^"]+)"/);
+    parsed = {
+      title: titleMatch?.[1] || snapshots[0].title,
+      summary: summaryMatch?.[1] || snapshots[0].summary || '',
+      content: contentMatch?.[1] || aiResult
+    };
+  }
+
+  // Create article in DB
+  const articleId = createArticle({
+    title: parsed.title,
+    summary: parsed.summary,
+    content: parsed.content,
+    status: 'draft',
+    ingest_status: 'synthesized_from_competitors',
+    source: 'دمج مصادر متعددة'
+  });
+
+  // Mark processed snapshots as read and save link to synthesized article
+  const updateStmt = db.prepare(
+    `UPDATE competitor_snapshots SET rewritten_article_id = ?, is_read = 1 WHERE id = ?`
+  );
+  db.transaction(() => {
+    for (const s of snapshots) {
+      updateStmt.run(articleId, s.id);
+    }
+  })();
+
+  return articleId;
+}
+
+export interface TopicAlert {
+  id: string;
+  topicTitle: string;
+  summary: string;
+  severity: 'high' | 'medium';
+  snapshots: { id: number; monitorName: string; title: string; publishedAt: string | null }[];
+  snapshotIds: number[];
+}
+
+export async function getTopicAlerts(): Promise<TopicAlert[]> {
+  const db = getDb();
+  // Fetch unread competitor snapshots from the last 24 hours
+  const snapshots = db.prepare(`
+    SELECT s.*, m.name as monitor_name 
+    FROM competitor_snapshots s
+    JOIN competitor_monitors m ON s.monitor_id = m.id
+    WHERE s.is_read = 0 AND s.seen_at >= datetime('now', '-24 hours')
+    ORDER BY s.seen_at DESC
+  `).all() as (CompetitorSnapshot & { monitor_name: string })[];
+
+  if (snapshots.length < 2) return [];
+
+  // Cluster using SimHash
+  const hashedSnapshots = snapshots.map(s => ({
+    snapshot: s,
+    hash: articleSimhash(s.title, s.summary ?? '')
+  }));
+
+  const clusters: { main: CompetitorSnapshot & { monitor_name: string }; duplicates: (CompetitorSnapshot & { monitor_name: string })[] }[] = [];
+  const processed = new Set<number>();
+
+  for (let i = 0; i < hashedSnapshots.length; i++) {
+    const itemA = hashedSnapshots[i]!;
+    if (processed.has(itemA.snapshot.id)) continue;
+    processed.add(itemA.snapshot.id);
+
+    const currentCluster = {
+      main: itemA.snapshot,
+      duplicates: [] as (CompetitorSnapshot & { monitor_name: string })[]
+    };
+
+    for (let j = i + 1; j < hashedSnapshots.length; j++) {
+      const itemB = hashedSnapshots[j]!;
+      if (processed.has(itemB.snapshot.id)) continue;
+
+      if (itemA.hash && itemB.hash) {
+        const dist = hammingDistance(itemA.hash, itemB.hash);
+        if (dist <= 6) {
+          processed.add(itemB.snapshot.id);
+          currentCluster.duplicates.push(itemB.snapshot);
+        }
+      }
+    }
+
+    clusters.push(currentCluster);
+  }
+
+  const alerts: TopicAlert[] = [];
+
+  for (const c of clusters) {
+    const allSnaps = [c.main, ...c.duplicates];
+    const uniqueMonitors = new Set(allSnaps.map(s => s.monitor_id));
+    
+    // Trigger alert if at least 2 different competitors publish the same news
+    if (uniqueMonitors.size >= 2) {
+      const severity = uniqueMonitors.size >= 3 ? 'high' : 'medium';
+      
+      const monitorNames = allSnaps.map(s => s.monitor_name);
+      const uniqueNames = Array.from(new Set(monitorNames));
+      
+      let alertMsg = `رصد نشاط متزامن لدى ${uniqueNames.length} منافسين (${uniqueNames.join('، ')}) حول هذا الموضوع.`;
+      if (severity === 'high') {
+        alertMsg = `🚨 تنبيه عاجل: نشاط متزامن مكثف لدى ${uniqueNames.length} منافسين حول: "${c.main.title}". مقترح دمج التغطية فوراً!`;
+      }
+
+      alerts.push({
+        id: String(c.main.id),
+        topicTitle: c.main.title,
+        summary: alertMsg,
+        severity,
+        snapshots: allSnaps.map(s => ({
+          id: s.id,
+          monitorName: s.monitor_name,
+          title: s.title,
+          publishedAt: s.published_at || s.seen_at
+        })),
+        snapshotIds: allSnaps.map(s => s.id)
+      });
+    }
+  }
+
+  return alerts;
+}
+

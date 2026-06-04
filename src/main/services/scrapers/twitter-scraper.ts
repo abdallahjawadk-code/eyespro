@@ -9,6 +9,7 @@
  * Falls back to browser scraping if all Nitter instances are down.
  */
 import { BrowserWindow, session } from 'electron';
+import * as cheerio from 'cheerio';
 import { fetchUrlGuarded } from '../../net/guarded-fetch';
 import { getNextProxy, getProxyRules, reportProxyFailure, reportProxySuccess } from '../../net/proxy-pool';
 import { withRetry, getRandomFingerprint, buildStealthScript, randomDelay } from '../../net/stealth-utils';
@@ -37,9 +38,62 @@ const TW_PARTITION = 'persist:tw-session';
 const LOAD_TIMEOUT = 25_000;
 const MAX_TWEETS = 25;
 
+// ─── Twitter Embed Syndication Widget Scraper (Preferred — lightweight, official) ─────
 
+async function scrapeViaSyndication(handle: string): Promise<Tweet[] | null> {
+  const cleanHandle = handle.replace(/^@/, '');
+  const url = `https://syndication.twitter.com/srv/timeline-profile/screen-name/${cleanHandle}`;
+  try {
+    const res = await fetchUrlGuarded(url, { timeout: 15_000 });
+    if (!res.ok) return null;
 
-// ─── Nitter RSS (preferred — no browser needed) ───────────────────────────────
+    const $ = cheerio.load(res.body);
+    const scriptText = $('#__NEXT_DATA__').html();
+    if (!scriptText) return null;
+
+    const parsed = JSON.parse(scriptText);
+    const entries = parsed?.props?.pageProps?.timeline?.entries;
+    if (!Array.isArray(entries)) return null;
+
+    const tweets: Tweet[] = [];
+    for (const entry of entries) {
+      if (tweets.length >= MAX_TWEETS) break;
+      const tweetData = entry?.content?.tweet || entry?.tweet || entry?.item?.content?.tweet;
+      if (!tweetData) continue;
+
+      const tweetId = tweetData.id_str || String(tweetData.id);
+      const text = tweetData.text || tweetData.full_text || '';
+      if (!text || text.length < 10) continue;
+
+      let publishedAt: string | null = null;
+      if (tweetData.created_at) {
+        const d = new Date(tweetData.created_at);
+        if (!isNaN(d.getTime())) {
+          publishedAt = d.toISOString();
+        }
+      }
+      const link = `https://x.com/${cleanHandle}/status/${tweetId}`;
+
+      tweets.push({
+        text: text.slice(0, 2000),
+        link,
+        tweetId,
+        publishedAt,
+        author: cleanHandle,
+      });
+    }
+
+    if (tweets.length > 0) {
+      log.info(`Syndication scraped ${tweets.length} tweets for @${cleanHandle}`);
+      return tweets;
+    }
+  } catch (e) {
+    log.warn(`Syndication scrape failed for @${cleanHandle}: ${(e as Error).message}`);
+  }
+  return null;
+}
+
+// ─── Nitter RSS (Preferred fallback — no browser needed) ───────────────────────────────
 
 function extractRssTag(xml: string, tag: string): string {
   const m = new RegExp(`<${tag}[^>]*>\\s*(?:<!\\[CDATA\\[([\\s\\S]*?)\\]\\]>|([^<]*))\\s*<\\/${tag}>`, 'i').exec(xml);
@@ -185,7 +239,14 @@ async function scrapeViaBrowser(handle: string): Promise<Tweet[]> {
 // ─── Public API ───────────────────────────────────────────────────────────────
 
 export async function scrapeTwitterProfile(handle: string): Promise<Tweet[]> {
-  // Try Nitter first (fast, no browser) — with auto retry
+  // Try syndication first (fast, official widget timeline)
+  const fromSyndication = await withRetry(() => scrapeViaSyndication(handle) as Promise<Tweet[]>, {
+    maxAttempts: 2,
+    onRetry: (n, e) => log.warn(`Syndication retry ${n} for @${handle}: ${e.message}`),
+  }).catch(() => null);
+  if (fromSyndication && fromSyndication.length > 0) return fromSyndication;
+
+  // Try Nitter second (fast, no browser) — with auto retry
   const fromNitter = await withRetry(() => scrapeViaNitter(handle) as Promise<Tweet[]>, {
     maxAttempts: 2,
     onRetry: (n, e) => log.warn(`Nitter retry ${n} for @${handle}: ${e.message}`),
@@ -193,7 +254,7 @@ export async function scrapeTwitterProfile(handle: string): Promise<Tweet[]> {
   if (fromNitter && fromNitter.length > 0) return fromNitter;
 
   // Fall back to browser stealth with retry + rotating fingerprint
-  log.info(`Nitter unavailable for @${handle}, falling back to browser scrape`);
+  log.info(`Syndication and Nitter unavailable for @${handle}, falling back to browser scrape`);
   return withRetry(() => scrapeViaBrowser(handle), {
     maxAttempts: 3,
     baseDelayMs: 2000,

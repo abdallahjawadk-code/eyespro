@@ -214,6 +214,9 @@ const CHANNEL_PERMS: Record<string, Perm> = {
   'monitor:markRead': 'write',
   'monitor:rewrite': 'write',
   'monitor:unreadCount': 'read',
+  'monitor:getSemanticClusters': 'read',
+  'monitor:synthesizeNews': 'write',
+  'monitor:getTopicAlerts': 'read',
   // Instagram auth
   'instagram:login':      'write',
   'instagram:loggedIn':   'read',
